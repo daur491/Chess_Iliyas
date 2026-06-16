@@ -115,13 +115,40 @@ export const GamePage = () => {
     }
   }, [moves]);
 
-  // Load game via REST immediately on mount (don't wait for WebSocket)
+  const movesCountRef = useRef(0);
+
+  // Load game via REST immediately on mount, then poll for opponent moves
   useEffect(() => {
     if (!id) return;
-    gamesApi.getGame(id).then(({ game: g, moves: m }) => {
-      setGame(g);
-      setMoves(m);
-    }).catch((e) => console.error('Failed to load game', e));
+
+    let active = true;
+
+    const sync = async () => {
+      try {
+        const { game: g, moves: m } = await gamesApi.getGame(id);
+        if (!active) return;
+        // Always update game (to get white/black user objects)
+        setGame(g);
+        // Only update moves if count changed (avoids resetting animation)
+        if (m.length !== movesCountRef.current) {
+          movesCountRef.current = m.length;
+          setMoves(m);
+        }
+        if (g.status === 'finished') {
+          setGameOver(true);
+        }
+      } catch (e) {
+        console.error('Failed to sync game', e);
+      }
+    };
+
+    sync();
+    const interval = setInterval(sync, 2000);
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [id]);
 
   // All hooks must be before any early return
@@ -181,12 +208,10 @@ export const GamePage = () => {
         await animatePiece(botPiece, botFrom, botTo, filesArr, ranksArr);
       }
 
-      // Apply final state
+      // Apply final state — polling will sync moves automatically
       setGame(result.game);
       if (result.isGameOver) setGameOver(true);
       try { chessRef.current = new Chess(result.game.currentFen); } catch {}
-      const { moves: m } = await gamesApi.getGame(id);
-      setMoves(m);
     } catch (e: any) {
       console.error('Move failed:', e?.response?.data ?? e?.message);
     } finally {

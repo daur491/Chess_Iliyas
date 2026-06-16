@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { getSocket, resetSocket } from '../api/socket';
+import { getSocket } from '../api/socket';
 import { useGameStore } from '../store/gameStore';
 import type { GameMove } from '../types';
 
@@ -22,8 +22,6 @@ export const useGameSocket = (gameId: string | undefined) => {
     if (!gameId) return;
     joinedRef.current = false;
 
-    // Reset socket so it picks up the latest token from localStorage
-    resetSocket();
     const socket = getSocket();
 
     const joinGame = () => {
