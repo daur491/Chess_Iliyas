@@ -1,0 +1,27 @@
+.timer {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--tg-theme-text-color, #fff);
+  background: var(--tg-theme-secondary-bg-color, #2c2c2e);
+  padding: 8px 16px;
+  border-radius: 8px;
+  min-width: 90px;
+  text-align: center;
+  transition: background 0.3s, color 0.3s;
+}
+
+.timer--active {
+  background: var(--tg-theme-bg-color, #1c1c1e);
+  border: 2px solid var(--tg-theme-button-color, #0a84ff);
+}
+
+.timer--low {
+  color: #ff3b30;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}

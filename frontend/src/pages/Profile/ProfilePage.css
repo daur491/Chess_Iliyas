@@ -1,0 +1,179 @@
+.profile {
+  padding: 16px;
+  padding-bottom: 80px;
+  min-height: 100vh;
+  background: var(--tg-theme-bg-color, #000);
+  color: var(--tg-theme-text-color, #fff);
+}
+
+.profile__header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.profile__avatar, .profile__avatar img, .profile__avatar-ph {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.profile__avatar-ph {
+  background: var(--tg-theme-button-color, #0a84ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.profile__username {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0 0 4px;
+}
+
+.profile__elo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.profile__elo {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--tg-theme-button-color, #0a84ff);
+}
+
+.profile__best-elo {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #8e8e93);
+}
+
+.profile__date {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #8e8e93);
+}
+
+.profile__section {
+  margin-bottom: 20px;
+}
+
+.profile__section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tg-theme-hint-color, #8e8e93);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 10px;
+}
+
+.profile__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.profile__stat {
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border-radius: 12px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.profile__stat-value {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.profile__stat-value--win { color: #30d158; }
+.profile__stat-value--loss { color: #ff453a; }
+
+.profile__stat-label {
+  font-size: 11px;
+  color: var(--tg-theme-hint-color, #8e8e93);
+}
+
+.profile__puzzle-stats {
+  display: flex;
+  gap: 20px;
+  padding: 14px 16px;
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.profile__achievements {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.profile__achievement {
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.profile__achievement--unlocked {
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border-left: 3px solid #30d158;
+}
+
+.profile__achievement--locked {
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  opacity: 0.6;
+}
+
+.profile__achievement-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.profile__achievement-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.profile__achievement-desc {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #8e8e93);
+}
+
+.profile__achievement-date {
+  font-size: 11px;
+  color: #30d158;
+}
+
+.profile__achievement-progress {
+  height: 4px;
+  background: #3a3a3c;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.profile__achievement-bar {
+  height: 100%;
+  background: var(--tg-theme-button-color, #0a84ff);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.profile__achievement-prog-text {
+  font-size: 11px;
+  color: var(--tg-theme-hint-color, #8e8e93);
+}

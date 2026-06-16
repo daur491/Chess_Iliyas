@@ -1,0 +1,210 @@
+.play {
+  padding: 16px;
+  padding-bottom: 80px;
+  min-height: 100vh;
+  background: var(--tg-theme-bg-color, #000);
+  color: var(--tg-theme-text-color, #fff);
+}
+
+.play__tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.play__tab {
+  flex: 1;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--tg-theme-hint-color, #8e8e93);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.play__tab.active {
+  background: var(--tg-theme-button-color, #0a84ff);
+  color: #fff;
+}
+
+.play__section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tg-theme-hint-color, #8e8e93);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 8px;
+}
+
+.play__tc-group { margin-bottom: 8px; }
+
+.play__tc-group-label {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #8e8e93);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.play__tc-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.play__tc-btn {
+  padding: 8px 14px;
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--tg-theme-text-color, #fff);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.play__tc-btn.active {
+  border-color: var(--tg-theme-button-color, #0a84ff);
+  color: var(--tg-theme-button-color, #0a84ff);
+}
+
+.play__opponent-row, .play__color-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.play__opponent-btn, .play__color-btn {
+  flex: 1;
+  padding: 10px;
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--tg-theme-text-color, #fff);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.play__opponent-btn.active, .play__color-btn.active {
+  border-color: var(--tg-theme-button-color, #0a84ff);
+  color: var(--tg-theme-button-color, #0a84ff);
+}
+
+.play__bot-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.play__bot-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--tg-theme-text-color, #fff);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.2s;
+}
+
+.play__bot-btn.active {
+  border-color: var(--tg-theme-button-color, #0a84ff);
+  color: var(--tg-theme-button-color, #0a84ff);
+}
+
+.play__bot-elo {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #8e8e93);
+}
+
+.play__start-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--tg-theme-button-color, #0a84ff);
+  color: var(--tg-theme-button-text-color, #fff);
+  border: none;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+.play__searching {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 24px;
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border-radius: 16px;
+}
+
+.play__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--tg-theme-hint-color, #8e8e93);
+  border-top-color: var(--tg-theme-button-color, #0a84ff);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.play__cancel-btn {
+  padding: 8px 24px;
+  background: #ff3b30;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.play__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.play__empty {
+  text-align: center;
+  color: var(--tg-theme-hint-color, #8e8e93);
+  padding: 40px 0;
+}
+
+.play__game-card {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--tg-theme-secondary-bg-color, #1c1c1e);
+  border: none;
+  border-radius: 12px;
+  color: var(--tg-theme-text-color, #fff);
+  font-size: 15px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.play__game-result--white_win { color: #30d158; }
+.play__game-result--black_win { color: #ff453a; }
+.play__game-result--draw { color: #ffd60a; }
