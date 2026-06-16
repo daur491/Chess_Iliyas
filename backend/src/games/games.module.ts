@@ -33,6 +33,6 @@ import { AchievementsModule } from '../achievements/achievements.module';
   ],
   providers: [GamesService, GamesGateway, EloService],
   controllers: [GamesController],
-  exports: [GamesService],
+  exports: [GamesService, GamesGateway],
 })
 export class GamesModule {}
