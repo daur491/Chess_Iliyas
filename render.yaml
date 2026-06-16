@@ -6,7 +6,7 @@ services:
     plan: starter
     branch: main
     rootDir: backend
-    buildCommand: apt-get install -y stockfish 2>/dev/null || true && npm ci && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /api/health
     autoDeploy: true
@@ -33,7 +33,7 @@ services:
       - key: ADMIN_TELEGRAM_IDS
         sync: false
       - key: STOCKFISH_PATH
-        value: /usr/games/stockfish
+        value: ./bin/stockfish
       - key: FRONTEND_URL
         sync: false
       - key: DB_SYNCHRONIZE

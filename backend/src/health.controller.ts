@@ -10,32 +10,33 @@ export class HealthController {
 
   @Get('stockfish')
   checkStockfish() {
-    const paths = [
+    const { resolve } = require('path');
+    const { existsSync } = require('fs');
+
+    const configured = process.env.STOCKFISH_PATH ?? 'stockfish';
+    const resolved = configured.startsWith('./') || configured.startsWith('../')
+      ? resolve(process.cwd(), configured)
+      : configured;
+
+    const checkPaths = [
+      resolved,
       '/usr/games/stockfish',
       '/usr/bin/stockfish',
-      'stockfish',
+      resolve(process.cwd(), 'bin/stockfish'),
     ];
+
     const results: Record<string, string> = {};
-    for (const p of paths) {
-      try {
-        execSync(`test -f ${p} && echo exists`, { timeout: 1000 });
-        results[p] = 'found';
-      } catch {
-        results[p] = 'not found';
-      }
+    for (const p of checkPaths) {
+      results[p] = existsSync(p) ? 'EXISTS' : 'missing';
     }
+
     let version = 'unavailable';
     try {
-      version = execSync('stockfish <<< "quit" 2>/dev/null | head -1 || echo "not found"', {
-        timeout: 2000,
-        shell: '/bin/bash',
+      version = execSync(`"${resolved}" <<< "quit" 2>/dev/null | head -1`, {
+        timeout: 2000, shell: '/bin/bash',
       }).toString().trim();
     } catch { /* ignore */ }
 
-    return {
-      paths: results,
-      version,
-      STOCKFISH_PATH: process.env.STOCKFISH_PATH,
-    };
+    return { configured, resolved, paths: results, version, cwd: process.cwd() };
   }
 }

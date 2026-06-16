@@ -1,6 +1,8 @@
 import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { spawn } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const DEPTH_BY_LEVEL: Record<number, number> = {
   1: 2,
@@ -17,10 +19,15 @@ export class BotService implements OnModuleDestroy {
   private stockfishAvailable: boolean | null = null;
 
   constructor(private readonly configService: ConfigService) {
-    this.stockfishPath = configService.get<string>(
-      'STOCKFISH_PATH',
-      'stockfish',
-    );
+    const configured = configService.get<string>('STOCKFISH_PATH', 'stockfish');
+    // Resolve relative paths from the app root directory
+    if (configured.startsWith('./') || configured.startsWith('../')) {
+      const resolved = path.resolve(process.cwd(), configured);
+      this.stockfishPath = fs.existsSync(resolved) ? resolved : configured;
+    } else {
+      this.stockfishPath = configured;
+    }
+    this.logger.log(`Stockfish path: ${this.stockfishPath}`);
   }
 
   onModuleDestroy() {}
