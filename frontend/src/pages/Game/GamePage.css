@@ -85,7 +85,8 @@
   height: min(calc(100vw - 8px), calc(100dvh - 160px));
   border: 2px solid rgba(255,255,255,0.1);
   border-radius: 6px;
-  overflow: hidden;
+  /* NO overflow:hidden — flying piece needs to be visible */
+  position: relative;
   flex-shrink: 0;
 }
 
@@ -128,14 +129,19 @@
   z-index: 1;
 }
 
-/* Slide animation: piece starts offset by (--slide-x, --slide-y) then moves to 0,0 */
-@keyframes piece-slide {
-  from { transform: translate(var(--slide-x, 0), var(--slide-y, 0)); }
-  to   { transform: translate(0, 0); }
+/* Flying piece: absolute overlay, animates from fromX/fromY to toX/toY */
+@keyframes piece-fly {
+  from { transform: translate(calc(-50% + 0px), calc(-50% + 0px)); }
+  to   { transform: translate(calc(-50% + var(--fly-dx, 0px)), calc(-50% + var(--fly-dy, 0px))); }
 }
 
-.game__piece--slide {
-  animation: piece-slide 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+.game__piece--flying {
+  width: min(7.5vw, calc((100dvh - 160px) / 8 * 0.82));
+  height: min(7.5vw, calc((100dvh - 160px) / 8 * 0.82));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: piece-fly 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
 .game__piece--w {

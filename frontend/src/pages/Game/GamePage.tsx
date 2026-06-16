@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import type { CSSProperties } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { useAuthStore } from '../../store/authStore';
@@ -35,23 +36,33 @@ function parseFen(fen: string): Record<string, string> {
   return pos;
 }
 
+// Flying piece state during animation
+interface FlyingPiece {
+  piece: string;   // e.g. 'wP'
+  fromX: number;  // px relative to board wrapper
+  fromY: number;
+  toX: number;
+  toY: number;
+}
+
 export const GamePage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { game, moves, timerState, isGameOver, setGame, setMoves, setGameOver, reset } = useGameStore();
-  const { sendMove, offerDraw, resign } = useGameSocket(id);
+  const { offerDraw, sendMove: _sendMove, resign: _resign } = useGameSocket(id);
   const [wsTimeout, setWsTimeout] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [legalTargets, setLegalTargets] = useState<string[]>([]);
   const [moving, setMoving] = useState(false);
-  // lastMove: { from, to } — used for highlight + slide animation
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
-  // animKey bumped each time a new move lands so CSS animation re-triggers
   const [animKey, setAnimKey] = useState(0);
+  // Flying piece overlay for smooth animation
+  const [flyingPiece, setFlyingPiece] = useState<FlyingPiece | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
   const chessRef = useRef(new Chess());
 
-  useEffect(() => { reset(); setSelected(null); setLegalTargets([]); setLastMove(null); setAnimKey(0); }, [id]);
+  useEffect(() => { reset(); setSelected(null); setLegalTargets([]); setLastMove(null); setAnimKey(0); setFlyingPiece(null); }, [id]);
 
   useEffect(() => {
     if (game?.currentFen) {
@@ -64,9 +75,7 @@ export const GamePage = () => {
     if (moves.length === 0) return;
     const last = moves[moves.length - 1];
     if (last?.moveUci && last.moveUci.length >= 4) {
-      const from = last.moveUci.slice(0, 2);
-      const to   = last.moveUci.slice(2, 4);
-      setLastMove({ from, to });
+      setLastMove({ from: last.moveUci.slice(0, 2), to: last.moveUci.slice(2, 4) });
       setAnimKey((k) => k + 1);
     }
   }, [moves]);
@@ -91,33 +100,59 @@ export const GamePage = () => {
   const isWhite = game?.whiteId === user?.id;
   const isBlack = game?.blackId === user?.id;
 
-  const doMove = useCallback(async (from: string, to: string, promotion = '') => {
+  // Get center px coords of a square relative to board wrapper
+  const getSquareCenter = useCallback((sq: string, files: string[], ranks: string[]) => {
+    const board = boardRef.current;
+    if (!board) return null;
+    const boardRect = board.getBoundingClientRect();
+    const sqW = boardRect.width / 8;
+    const sqH = boardRect.height / 8;
+    const fileIdx = files.indexOf(sq[0]);
+    const rankIdx = ranks.indexOf(sq[1]);
+    return {
+      x: fileIdx * sqW + sqW / 2,
+      y: rankIdx * sqH + sqH / 2,
+    };
+  }, []);
+
+  const doMove = useCallback(async (from: string, to: string, promotion = '', positionSnapshot: Record<string, string>, files: string[], ranks: string[]) => {
     if (moving || !id) return;
+
+    // Start flying piece animation immediately
+    const fromCenter = getSquareCenter(from, files, ranks);
+    const toCenter = getSquareCenter(to, files, ranks);
+    const piece = positionSnapshot[from];
+    if (fromCenter && toCenter && piece) {
+      setFlyingPiece({ piece, fromX: fromCenter.x, fromY: fromCenter.y, toX: toCenter.x, toY: toCenter.y });
+    }
+
     setMoving(true);
     setSelected(null);
     setLegalTargets([]);
+
     try {
       const result = await gamesApi.makeMove(id, from + to + promotion);
-      // Response contains game after bot move (if vs bot)
       const g = result.game;
       setGame(g);
       if (result.isGameOver) setGameOver(true);
       try { chessRef.current = new Chess(g.currentFen); } catch {}
-      // Refresh moves list
       const { moves: m } = await gamesApi.getGame(id);
       setMoves(m);
     } catch (e: any) {
       console.error('Move failed:', e?.response?.data ?? e?.message);
     } finally {
       setMoving(false);
+      // Keep flying piece visible until animation ends (220ms)
+      setTimeout(() => setFlyingPiece(null), 220);
     }
-  }, [id, moving]);
+  }, [id, moving, getSquareCenter]);
 
   const handleResign = useCallback(async () => {
     if (!id) return;
     try {
       const g = await gamesApi.resign(id);
       setGame(g);
+      setGameOver(true);
     } catch (e) {
       console.error('Resign failed', e);
     }
@@ -148,22 +183,6 @@ export const GamePage = () => {
   const files = isBlack ? [...FILES].reverse() : FILES;
   const ranks = isBlack ? [...RANKS].reverse() : RANKS;
 
-  // Compute slide offset in board cells for the piece that just landed on `to`
-  const getSlideStyle = (sq: string): React.CSSProperties | undefined => {
-    if (!lastMove || sq !== lastMove.to) return undefined;
-    const fromFile = FILES.indexOf(lastMove.from[0]);
-    const fromRank = RANKS.indexOf(lastMove.from[1]);
-    const toFile   = FILES.indexOf(sq[0]);
-    const toRank   = RANKS.indexOf(sq[1]);
-    let dx = fromFile - toFile;
-    let dy = fromRank - toRank;
-    if (isBlack) { dx = -dx; dy = -dy; }
-    return {
-      '--slide-x': `${dx * 100}%`,
-      '--slide-y': `${dy * 100}%`,
-    } as React.CSSProperties;
-  };
-
   const handleSquareClick = (sq: string) => {
     if (!myTurn || moving) return;
     const chess = chessRef.current;
@@ -173,15 +192,14 @@ export const GamePage = () => {
         const piece = position[selected];
         const isPromotion = piece === (isWhite ? 'wP' : 'bP') &&
           ((isWhite && sq[1] === '8') || (isBlack && sq[1] === '1'));
-        doMove(selected, sq, isPromotion ? 'q' : '');
+        doMove(selected, sq, isPromotion ? 'q' : '', position, files, ranks);
         return;
       }
       const clickedPiece = position[sq];
       const isOwn = clickedPiece && (isWhite ? clickedPiece[0] === 'w' : clickedPiece[0] === 'b');
       if (isOwn) {
-        const legalMoves = chess.moves({ square: sq as any, verbose: true });
         setSelected(sq);
-        setLegalTargets(legalMoves.map((m: any) => m.to));
+        setLegalTargets(chess.moves({ square: sq as any, verbose: true }).map((m: any) => m.to));
         return;
       }
       setSelected(null);
@@ -194,10 +212,34 @@ export const GamePage = () => {
     const isOwn = isWhite ? piece[0] === 'w' : piece[0] === 'b';
     if (!isOwn) return;
 
-    const legalMoves = chess.moves({ square: sq as any, verbose: true });
     setSelected(sq);
-    setLegalTargets(legalMoves.map((m: any) => m.to));
+    setLegalTargets(chess.moves({ square: sq as any, verbose: true }).map((m: any) => m.to));
   };
+
+  // Slide animation style for the piece that just moved
+  const getSlideStyle = (sq: string): CSSProperties | undefined => {
+    if (!lastMove || sq !== lastMove.to) return undefined;
+    const fromFile = FILES.indexOf(lastMove.from[0]);
+    const fromRank = RANKS.indexOf(lastMove.from[1]);
+    const toFile   = FILES.indexOf(sq[0]);
+    const toRank   = RANKS.indexOf(sq[1]);
+    let dx = fromFile - toFile;
+    let dy = fromRank - toRank;
+    if (isBlack) { dx = -dx; dy = -dy; }
+    return { '--slide-x': `${dx * 100}%`, '--slide-y': `${dy * 100}%` } as CSSProperties;
+  };
+
+  // Flying piece absolute style
+  const flyingStyle: CSSProperties | undefined = flyingPiece ? {
+    position: 'absolute',
+    left: flyingPiece.fromX,
+    top: flyingPiece.fromY,
+    transform: 'translate(-50%, -50%)',
+    '--fly-dx': `${flyingPiece.toX - flyingPiece.fromX}px`,
+    '--fly-dy': `${flyingPiece.toY - flyingPiece.fromY}px`,
+    pointerEvents: 'none',
+    zIndex: 100,
+  } as CSSProperties : undefined;
 
   return (
     <div className="game">
@@ -220,11 +262,12 @@ export const GamePage = () => {
 
       {/* Board */}
       <div className="game__board-wrap">
-        <div className="game__board">
+        <div className="game__board" ref={boardRef}>
           {ranks.map((rank) =>
             files.map((file) => {
               const sq = file + rank;
-              const piece = position[sq];
+              // Hide piece on "from" square while flying
+              const piece = (flyingPiece && lastMove?.from === sq) ? undefined : position[sq];
               const isLight = (FILES.indexOf(file) + RANKS.indexOf(rank)) % 2 !== 0;
               const isSelected = selected === sq;
               const isTarget = legalTargets.includes(sq);
@@ -260,6 +303,16 @@ export const GamePage = () => {
               );
             })
           )}
+
+          {/* Flying piece overlay */}
+          {flyingPiece && (
+            <span
+              className={`game__piece game__piece--${flyingPiece.piece[0]} game__piece--flying`}
+              style={flyingStyle}
+            >
+              {PIECES[flyingPiece.piece]}
+            </span>
+          )}
         </div>
       </div>
 
@@ -294,8 +347,12 @@ export const GamePage = () => {
 
         {!isGameOver && (
           <div className="game__actions">
-            <button className="game__action-btn game__action-btn--draw" onClick={offerDraw}>½ Ничья</button>
-            <button className="game__action-btn game__action-btn--resign" onClick={handleResign}>⚑ Сдаться</button>
+            <button className="game__action-btn game__action-btn--draw" onClick={() => {
+              if (confirm('Предложить ничью?')) offerDraw();
+            }}>½ Ничья</button>
+            <button className="game__action-btn game__action-btn--resign" onClick={() => {
+              if (confirm('Сдаться?')) handleResign();
+            }}>⚑ Сдаться</button>
           </div>
         )}
 

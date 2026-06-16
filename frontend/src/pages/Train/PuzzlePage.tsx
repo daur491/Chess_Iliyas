@@ -82,9 +82,14 @@ export const PuzzlePage = () => {
 
       <div className="puzzle-page__board">
         <Chessboard
-          position={fen}
-          onPieceDrop={onDrop}
-          arePiecesDraggable={!solution && !feedback}
+          options={{
+            position: fen === 'start' ? undefined : fen,
+            allowDragging: !solution && !feedback,
+            onPieceDrop: ({ sourceSquare, targetSquare }) => {
+              if (!targetSquare) return false;
+              return onDrop(sourceSquare, targetSquare) as unknown as boolean;
+            },
+          }}
         />
       </div>
 
