@@ -51,6 +51,12 @@ export const matchmakingApi = {
   join: (timeControl: string) =>
     api.post('/matchmaking/join', { timeControl }).then((r) => r.data),
   leave: () => api.delete('/matchmaking/leave').then((r) => r.data),
+  status: () =>
+    api.get('/matchmaking/status').then((r) => r.data) as Promise<{
+      inQueue: boolean;
+      gameId?: string;
+      color?: 'white' | 'black';
+    }>,
 };
 
 export const puzzlesApi = {

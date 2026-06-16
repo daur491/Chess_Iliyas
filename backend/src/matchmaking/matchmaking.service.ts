@@ -56,6 +56,28 @@ export class MatchmakingService implements OnModuleDestroy {
     this.onMatchFoundCallback = cb;
   }
 
+  async getMatchStatus(userId: string): Promise<{
+    inQueue: boolean;
+    gameId?: string;
+    color?: 'white' | 'black';
+  }> {
+    const inQueue = this.userQueues.has(userId);
+
+    // Check if a fresh PvP game was just created for this user (not vs bot)
+    const games = await this.gamesService.getActiveGames(userId);
+    const pvpGame = games.find((g) => !g.isVsBot);
+
+    if (pvpGame) {
+      return {
+        inQueue: false,
+        gameId: pvpGame.id,
+        color: pvpGame.whiteId === userId ? 'white' : 'black',
+      };
+    }
+
+    return { inQueue };
+  }
+
   async joinQueue(userId: string, timeControl: TimeControl): Promise<void> {
     const user = await this.usersService.findById(userId);
     if (!user) return;
