@@ -58,7 +58,9 @@ export class GamesService {
     const isWhiteTurn = chess.turn() === 'w';
     const expectedPlayerId = isWhiteTurn ? game.whiteId : game.blackId;
 
-    if (playerId !== expectedPlayerId) {
+    // In vs-bot games, bot moves have no userId (blackId/whiteId is null)
+    const isBotTurn = game.isVsBot && expectedPlayerId === null;
+    if (!isBotTurn && playerId !== expectedPlayerId) {
       throw new BadRequestException('Not your turn');
     }
 

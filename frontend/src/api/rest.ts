@@ -26,6 +26,8 @@ api.interceptors.response.use(
 export const authApi = {
   telegram: (initData: string) =>
     api.post('/auth/telegram', { initData }).then((r) => r.data),
+  devLogin: () =>
+    api.get('/auth/dev-login').then((r) => r.data),
 };
 
 export const usersApi = {
@@ -39,6 +41,10 @@ export const gamesApi = {
   getHistory: (page = 1, limit = 20) =>
     api.get('/games/history', { params: { page, limit } }).then((r) => r.data),
   getGame: (id: string) => api.get(`/games/${id}`).then((r) => r.data),
+  makeMove: (id: string, move: string) =>
+    api.post(`/games/${id}/move`, { move }).then((r) => r.data),
+  resign: (id: string) =>
+    api.post(`/games/${id}/resign`).then((r) => r.data),
 };
 
 export const matchmakingApi = {

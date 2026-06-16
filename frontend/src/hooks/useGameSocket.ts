@@ -1,7 +1,7 @@
-import { useEffect, useCallback } from 'react';
-import { getSocket } from '../api/socket';
+import { useEffect, useCallback, useRef } from 'react';
+import { getSocket, resetSocket } from '../api/socket';
 import { useGameStore } from '../store/gameStore';
-import { GameMove } from '../types';
+import type { GameMove } from '../types';
 
 interface MoveEvent {
   move: GameMove;
@@ -16,12 +16,31 @@ interface MoveEvent {
 export const useGameSocket = (gameId: string | undefined) => {
   const { setGame, setMoves, addMove, updateFen, setTimerState, updateTimers, setGameOver } =
     useGameStore();
+  const joinedRef = useRef(false);
 
   useEffect(() => {
     if (!gameId) return;
+    joinedRef.current = false;
+
+    // Reset socket so it picks up the latest token from localStorage
+    resetSocket();
     const socket = getSocket();
 
-    socket.emit('join_game', { gameId });
+    const joinGame = () => {
+      if (joinedRef.current) return;
+      joinedRef.current = true;
+      socket.emit('join_game', { gameId });
+    };
+
+    if (socket.connected) {
+      joinGame();
+    } else {
+      socket.on('connect', joinGame);
+    }
+
+    socket.on('connect_error', (err) => {
+      console.warn('[socket] connect_error:', err.message);
+    });
 
     socket.on('game_state', ({ game, moves, timerState }: any) => {
       setGame(game);
@@ -43,6 +62,8 @@ export const useGameSocket = (gameId: string | undefined) => {
     socket.on('timeout', () => setGameOver(true));
 
     return () => {
+      socket.off('connect', joinGame);
+      socket.off('connect_error');
       socket.off('game_state');
       socket.off('move_made');
       socket.off('timer_update');

@@ -73,4 +73,17 @@ export class AuthService {
 
     return { accessToken, user };
   }
+
+  async devLogin() {
+    const user = await this.usersService.findOrCreate({
+      telegramId: '000000001',
+      username: 'dev_player',
+      avatarUrl: undefined,
+    });
+
+    const payload = { sub: user.id, telegramId: user.telegramId };
+    const accessToken = this.jwtService.sign(payload);
+
+    return { accessToken, user };
+  }
 }

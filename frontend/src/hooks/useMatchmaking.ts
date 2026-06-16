@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { matchmakingApi } from '../api/rest';
 import { getSocket } from '../api/socket';
-import { TimeControl } from '../types';
+import type { TimeControl } from '../types';
 
 export const useMatchmaking = () => {
   const navigate = useNavigate();

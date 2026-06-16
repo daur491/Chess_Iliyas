@@ -10,6 +10,13 @@ const STATUS_LABEL: Record<string, string> = {
   offline: 'Не в сети',
 };
 
+const MENU_ITEMS = [
+  { to: '/play', icon: '♟', label: 'Играть' },
+  { to: '/train', icon: '🎯', label: 'Тренировка' },
+  { to: '/rating', icon: '🏆', label: 'Рейтинг' },
+  { to: '/tournaments', icon: '⚔️', label: 'Турниры' },
+];
+
 export const HomePage = () => {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
@@ -32,12 +39,17 @@ export const HomePage = () => {
     enabled: !!user,
   });
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+        Загрузка...
+      </div>
+    );
+  }
 
-  const winRate =
-    user.gamesPlayed > 0
-      ? Math.round((user.wins / user.gamesPlayed) * 100)
-      : 0;
+  const winRate = user.gamesPlayed > 0
+    ? Math.round((user.wins / user.gamesPlayed) * 100)
+    : 0;
 
   return (
     <div className="home">
@@ -54,7 +66,7 @@ export const HomePage = () => {
         </div>
         <div className="home__user-info">
           <h2 className="home__username">{user.username}</h2>
-          <span className="home__status">{STATUS_LABEL[user.status]}</span>
+          <span className="home__status">{STATUS_LABEL[user.status] ?? 'Онлайн'}</span>
         </div>
         <div className="home__elo">
           <span className="home__elo-value">{user.elo}</span>
@@ -77,57 +89,61 @@ export const HomePage = () => {
         </div>
       </div>
 
-      {activeGames && activeGames.length > 0 && (
-        <div className="home__section">
-          <h3 className="home__section-title">Незавершённые партии</h3>
-          {activeGames.slice(0, 1).map((game: any) => (
+      <div className="home__content">
+        {activeGames && activeGames.length > 0 && (
+          <div>
+            <div className="home__section-title">♟ Незавершённые партии</div>
             <button
-              key={game.id}
               className="home__continue-btn"
-              onClick={() => navigate(`/game/${game.id}`)}
+              onClick={() => navigate(`/game/${activeGames[0].id}`)}
             >
-              Продолжить партию
+              Продолжить партию →
             </button>
-          ))}
-        </div>
-      )}
-
-      {dailyPuzzle && (
-        <div className="home__section">
-          <h3 className="home__section-title">Ежедневная задача</h3>
-          <div className="home__puzzle-card">
-            <div className="home__puzzle-info">
-              <span className="home__puzzle-title">{dailyPuzzle.title}</span>
-              <span className={`home__puzzle-diff home__puzzle-diff--${dailyPuzzle.difficulty}`}>
-                {dailyPuzzle.difficulty}
-              </span>
-            </div>
-            <Link to={`/train/puzzle/${dailyPuzzle.id}`} className="home__puzzle-btn">
-              Решить
-            </Link>
           </div>
-        </div>
-      )}
+        )}
 
-      {recentAchievements && recentAchievements.length > 0 && (
-        <div className="home__section">
-          <h3 className="home__section-title">Достижения</h3>
-          <div className="home__achievements">
-            {recentAchievements.map((a: any) => (
-              <div key={a.id} className="home__achievement">
-                <span className="home__achievement-title">{a.title}</span>
-                <span className="home__achievement-desc">{a.description}</span>
+        {dailyPuzzle && (
+          <div>
+            <div className="home__section-title">🎯 Задача дня</div>
+            <div className="home__puzzle-card">
+              <div className="home__puzzle-info">
+                <span className="home__puzzle-title">{dailyPuzzle.title}</span>
+                <span className={`home__puzzle-diff home__puzzle-diff--${dailyPuzzle.difficulty}`}>
+                  {dailyPuzzle.difficulty === 'easy' ? 'Лёгкая' : dailyPuzzle.difficulty === 'medium' ? 'Средняя' : 'Сложная'}
+                </span>
               </div>
+              <Link to={`/train/puzzle/${dailyPuzzle.id}`} className="home__puzzle-btn">
+                Решить
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <div className="home__section-title">Меню</div>
+          <div className="home__menu">
+            {MENU_ITEMS.map(({ to, icon, label }) => (
+              <Link key={to} to={to} className="home__menu-btn">
+                <span className="home__menu-icon">{icon}</span>
+                {label}
+              </Link>
             ))}
           </div>
         </div>
-      )}
 
-      <div className="home__menu">
-        <Link to="/play" className="home__menu-btn">Играть</Link>
-        <Link to="/train" className="home__menu-btn">Тренировка</Link>
-        <Link to="/rating" className="home__menu-btn">Рейтинг</Link>
-        <Link to="/tournaments" className="home__menu-btn">Турниры</Link>
+        {recentAchievements && recentAchievements.length > 0 && (
+          <div>
+            <div className="home__section-title">🏅 Достижения</div>
+            <div className="home__achievements">
+              {recentAchievements.map((a: any) => (
+                <div key={a.id} className="home__achievement">
+                  <span className="home__achievement-title">{a.title}</span>
+                  <span className="home__achievement-desc">{a.description}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

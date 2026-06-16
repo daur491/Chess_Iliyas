@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../shared/decorators/current-user.decorator';
 import { User } from '../shared/entities/user.entity';
 import { GamesService } from './games.service';
+import { BotService } from '../bot/bot.service';
 import { TimeControl } from '../shared/entities/game.entity';
 
 class CreateBotGameDto {
@@ -30,7 +31,10 @@ class CreateBotGameDto {
 @Controller('games')
 @UseGuards(JwtAuthGuard)
 export class GamesController {
-  constructor(private readonly gamesService: GamesService) {}
+  constructor(
+    private readonly gamesService: GamesService,
+    private readonly botService: BotService,
+  ) {}
 
   @Post('vs-bot')
   async createBotGame(
@@ -74,5 +78,46 @@ export class GamesController {
   async getPgn(@Param('id') id: string) {
     const { game } = await this.gamesService.getGameWithMoves(id);
     return { pgn: game.pgn };
+  }
+
+  @Post(':id/move')
+  async makeMove(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() dto: { move: string },
+  ) {
+    const result = await this.gamesService.makeMove(id, user.id, dto.move);
+
+    // If vs bot and game not over — make bot move immediately
+    if (result.game.isVsBot && !result.isGameOver) {
+      const botMove = await this.botService.getBotMove(
+        result.game.currentFen,
+        result.game.botLevel ?? 3,
+      );
+      if (botMove) {
+        try {
+          const botResult = await this.gamesService.makeMove(
+            id,
+            '__bot__',
+            botMove,
+          );
+          return {
+            game: botResult.game,
+            playerMove: result.move,
+            botMove: botResult.move,
+            isGameOver: botResult.isGameOver,
+          };
+        } catch {
+          // Bot move failed — return player move result
+        }
+      }
+    }
+
+    return result;
+  }
+
+  @Post(':id/resign')
+  async resign(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.gamesService.resign(id, user.id);
   }
 }

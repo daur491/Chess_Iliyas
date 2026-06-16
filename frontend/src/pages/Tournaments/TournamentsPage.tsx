@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tournamentsApi } from '../../api/rest';
-import { Tournament } from '../../types';
+import type { Tournament } from '../../types';
 import './TournamentsPage.css';
 
 const STATUS_LABEL: Record<string, string> = {

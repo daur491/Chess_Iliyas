@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { gamesApi } from '../../api/rest';
 import { useMatchmaking } from '../../hooks/useMatchmaking';
-import { TimeControl } from '../../types';
+import type { TimeControl } from '../../types';
 import './PlayPage.css';
 
 const TIME_CONTROLS: { label: string; group: string; value: TimeControl; seconds: number }[] = [
@@ -19,11 +19,11 @@ const TIME_CONTROLS: { label: string; group: string; value: TimeControl; seconds
 ];
 
 const BOT_LEVELS = [
-  { level: 1, elo: 300, label: 'Уровень 1' },
-  { level: 2, elo: 600, label: 'Уровень 2' },
-  { level: 3, elo: 1000, label: 'Уровень 3' },
-  { level: 4, elo: 1500, label: 'Уровень 4' },
-  { level: 5, elo: 2000, label: 'Уровень 5' },
+  { level: 1, elo: 300, label: 'Новичок', icon: '🐣' },
+  { level: 2, elo: 600, label: 'Любитель', icon: '🙂' },
+  { level: 3, elo: 1000, label: 'Клубный', icon: '🧠' },
+  { level: 4, elo: 1500, label: 'Продвинутый', icon: '🔥' },
+  { level: 5, elo: 2000, label: 'Мастер', icon: '👑' },
 ];
 
 type Tab = 'new' | 'active' | 'history';
@@ -34,7 +34,7 @@ export const PlayPage = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('new');
   const [selectedTC, setSelectedTC] = useState<TimeControl>('rapid_10');
-  const [opponent, setOpponent] = useState<Opponent>('human');
+  const [opponent, setOpponent] = useState<Opponent>('bot');
   const [botLevel, setBotLevel] = useState(3);
   const [color, setColor] = useState<Color>('random');
 
@@ -79,79 +79,97 @@ export const PlayPage = () => {
 
       {tab === 'new' && (
         <div className="play__new">
-          <h3 className="play__section-title">Контроль времени</h3>
-          {groups.map((group) => (
-            <div key={group} className="play__tc-group">
-              <span className="play__tc-group-label">{group}</span>
-              <div className="play__tc-row">
-                {TIME_CONTROLS.filter((t) => t.group === group).map((tc) => (
+          <div className="play__section">
+            <div className="play__section-title">Контроль времени</div>
+            {groups.map((group) => (
+              <div key={group} className="play__tc-group">
+                <span className="play__tc-group-label">{group}</span>
+                <div className="play__tc-row">
+                  {TIME_CONTROLS.filter((t) => t.group === group).map((tc) => (
+                    <button
+                      key={tc.value}
+                      className={`play__tc-btn${selectedTC === tc.value ? ' active' : ''}`}
+                      onClick={() => setSelectedTC(tc.value)}
+                    >
+                      {tc.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="play__section">
+            <div className="play__section-title">Соперник</div>
+            <div className="play__opponent-row">
+              <button
+                className={`play__opponent-btn${opponent === 'human' ? ' active' : ''}`}
+                onClick={() => setOpponent('human')}
+              >
+                👤 Человек
+              </button>
+              <button
+                className={`play__opponent-btn${opponent === 'bot' ? ' active' : ''}`}
+                onClick={() => setOpponent('bot')}
+              >
+                🤖 Бот
+              </button>
+            </div>
+          </div>
+
+          {opponent === 'bot' && (
+            <div className="play__section">
+              <div className="play__section-title">Сложность</div>
+              <div className="play__bot-levels">
+                {BOT_LEVELS.map((b) => (
                   <button
-                    key={tc.value}
-                    className={`play__tc-btn${selectedTC === tc.value ? ' active' : ''}`}
-                    onClick={() => setSelectedTC(tc.value)}
+                    key={b.level}
+                    className={`play__bot-btn${botLevel === b.level ? ' active' : ''}`}
+                    onClick={() => setBotLevel(b.level)}
                   >
-                    {tc.label}
+                    <div className="play__bot-badge">
+                      <span className="play__bot-icon">{b.icon}</span>
+                      <span className="play__bot-name">{b.label}</span>
+                    </div>
+                    <span className="play__bot-elo">{b.elo} ELO</span>
                   </button>
                 ))}
               </div>
             </div>
-          ))}
+          )}
 
-          <h3 className="play__section-title">Соперник</h3>
-          <div className="play__opponent-row">
-            <button
-              className={`play__opponent-btn${opponent === 'human' ? ' active' : ''}`}
-              onClick={() => setOpponent('human')}
-            >
-              Человек
-            </button>
-            <button
-              className={`play__opponent-btn${opponent === 'bot' ? ' active' : ''}`}
-              onClick={() => setOpponent('bot')}
-            >
-              Бот
-            </button>
-          </div>
-
-          {opponent === 'bot' && (
-            <div className="play__bot-levels">
-              {BOT_LEVELS.map((b) => (
+          <div className="play__section">
+            <div className="play__section-title">Цвет</div>
+            <div className="play__color-row">
+              {([
+                { value: 'white', icon: '♔', label: 'Белые' },
+                { value: 'random', icon: '⚄', label: 'Случайно' },
+                { value: 'black', icon: '♚', label: 'Чёрные' },
+              ] as { value: Color; icon: string; label: string }[]).map((c) => (
                 <button
-                  key={b.level}
-                  className={`play__bot-btn${botLevel === b.level ? ' active' : ''}`}
-                  onClick={() => setBotLevel(b.level)}
+                  key={c.value}
+                  className={`play__color-btn${color === c.value ? ' active' : ''}`}
+                  onClick={() => setColor(c.value)}
                 >
-                  <span>{b.label}</span>
-                  <span className="play__bot-elo">{b.elo} ELO</span>
+                  <span className="play__color-icon">{c.icon}</span>
+                  {c.label}
                 </button>
               ))}
             </div>
-          )}
-
-          <h3 className="play__section-title">Цвет</h3>
-          <div className="play__color-row">
-            {(['white', 'black', 'random'] as Color[]).map((c) => (
-              <button
-                key={c}
-                className={`play__color-btn${color === c ? ' active' : ''}`}
-                onClick={() => setColor(c)}
-              >
-                {c === 'white' ? '♔ Белые' : c === 'black' ? '♚ Чёрные' : '⚄ Случайно'}
-              </button>
-            ))}
           </div>
 
           {searching ? (
             <div className="play__searching">
               <div className="play__spinner" />
-              <span>Поиск соперника...</span>
+              <span className="play__searching-text">Поиск соперника...</span>
+              <span className="play__searching-sub">Ожидайте, подбираем игрока</span>
               <button className="play__cancel-btn" onClick={() => leaveQueue()}>
                 Отменить
               </button>
             </div>
           ) : (
             <button className="play__start-btn" onClick={handlePlay}>
-              {opponent === 'human' ? 'Найти соперника' : 'Играть с ботом'}
+              {opponent === 'human' ? '♟ Найти соперника' : '🤖 Играть с ботом'}
             </button>
           )}
         </div>
@@ -160,7 +178,10 @@ export const PlayPage = () => {
       {tab === 'active' && (
         <div className="play__list">
           {!activeGames || activeGames.length === 0 ? (
-            <div className="play__empty">Нет активных партий</div>
+            <div className="play__empty">
+              <span className="play__empty-icon">♟</span>
+              Нет активных партий
+            </div>
           ) : (
             activeGames.map((game: any) => (
               <button
@@ -172,6 +193,7 @@ export const PlayPage = () => {
                 <span className="play__game-vs">
                   {game.white?.username ?? '?'} — {game.black?.username ?? '?'}
                 </span>
+                <span>›</span>
               </button>
             ))
           )}
@@ -180,11 +202,14 @@ export const PlayPage = () => {
 
       {tab === 'history' && (
         <div className="play__list">
-          {!history || history[0]?.length === 0 ? (
-            <div className="play__empty">Нет сыгранных партий</div>
+          {!history || (Array.isArray(history) ? history[0] : history)?.length === 0 ? (
+            <div className="play__empty">
+              <span className="play__empty-icon">📋</span>
+              История пуста
+            </div>
           ) : (
-            (Array.isArray(history) ? history[0] : []).map((game: any) => (
-              <div key={game.id} className="play__game-card play__game-card--history">
+            (Array.isArray(history) ? history[0] : history ?? []).map((game: any) => (
+              <div key={game.id} className="play__game-card">
                 <span className="play__game-tc">{game.timeControl}</span>
                 <span className="play__game-vs">
                   {game.white?.username ?? '?'} — {game.black?.username ?? '?'}

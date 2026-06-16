@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Game, GameMove, TimerState } from '../types';
+import type { Game, GameMove, TimerState } from '../types';
 
 interface GameState {
   game: Game | null;

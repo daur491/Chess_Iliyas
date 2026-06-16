@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, ForbiddenException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { IsString, IsNotEmpty } from 'class-validator';
 
@@ -15,5 +15,13 @@ export class AuthController {
   @Post('telegram')
   async telegramLogin(@Body() dto: TelegramAuthDto) {
     return this.authService.loginWithTelegram(dto.initData);
+  }
+
+  @Get('dev-login')
+  async devLogin() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Not available in production');
+    }
+    return this.authService.devLogin();
   }
 }

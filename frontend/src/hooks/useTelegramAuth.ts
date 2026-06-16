@@ -17,8 +17,20 @@ export const useTelegramAuth = () => {
     const authenticate = async () => {
       try {
         if (isAuthenticated()) {
-          const user = await usersApi.me();
-          useAuthStore.getState().setUser(user);
+          try {
+            const user = await usersApi.me();
+            useAuthStore.getState().setUser(user);
+            setLoading(false);
+            return;
+          } catch {
+            // Token expired — re-auth below
+            useAuthStore.getState().logout();
+          }
+        }
+
+        if (import.meta.env.DEV) {
+          const { accessToken, user } = await authApi.devLogin();
+          setAuth(user, accessToken);
           setLoading(false);
           return;
         }
@@ -27,10 +39,6 @@ export const useTelegramAuth = () => {
         const initData = tg?.initData;
 
         if (!initData) {
-          if (import.meta.env.DEV) {
-            setLoading(false);
-            return;
-          }
           throw new Error('Not running in Telegram');
         }
 

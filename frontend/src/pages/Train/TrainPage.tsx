@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { puzzlesApi } from '../../api/rest';
-import { PuzzleCategory, PuzzleDifficulty } from '../../types';
+import type { PuzzleCategory, PuzzleDifficulty } from '../../types';
 import './TrainPage.css';
 
 const CATEGORIES: { value: PuzzleCategory | ''; label: string }[] = [
