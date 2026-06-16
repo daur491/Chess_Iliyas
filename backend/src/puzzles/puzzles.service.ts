@@ -27,12 +27,15 @@ export class PuzzlesService {
     private readonly configService: ConfigService,
   ) {
     const redisUrl = configService.get<string>('REDIS_URL');
-    this.redis = redisUrl
-      ? new Redis(redisUrl, { tls: { rejectUnauthorized: false } })
-      : new Redis({
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
-        });
+    if (redisUrl) {
+      const tlsOpts = redisUrl.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {};
+      this.redis = new Redis(redisUrl, tlsOpts);
+    } else {
+      this.redis = new Redis({
+        host: configService.get('REDIS_HOST', 'localhost'),
+        port: configService.get<number>('REDIS_PORT', 6379),
+      });
+    }
   }
 
   async getPuzzles(

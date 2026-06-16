@@ -66,7 +66,18 @@ import { TournamentParticipant } from './shared/entities/tournament-participant.
       useFactory: (config: ConfigService) => {
         const redisUrl = config.get<string>('REDIS_URL');
         if (redisUrl) {
-          return { redis: redisUrl };
+          if (redisUrl.startsWith('rediss://')) {
+            return { redis: redisUrl };
+          }
+          const url = new URL(redisUrl);
+          return {
+            redis: {
+              host: url.hostname,
+              port: parseInt(url.port || '6379'),
+              password: url.password || undefined,
+              username: url.username || undefined,
+            },
+          };
         }
         return {
           redis: {
