@@ -8,6 +8,19 @@ declare global {
   }
 }
 
+const waitForTelegram = (maxWaitMs = 3000): Promise<any> => {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const check = () => {
+      const tg = window.Telegram?.WebApp;
+      if (tg) return resolve(tg);
+      if (Date.now() - start > maxWaitMs) return resolve(null);
+      setTimeout(check, 100);
+    };
+    check();
+  });
+};
+
 export const useTelegramAuth = () => {
   const { setAuth, isAuthenticated } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -23,32 +36,29 @@ export const useTelegramAuth = () => {
             setLoading(false);
             return;
           } catch {
-            // Token expired — re-auth below
             useAuthStore.getState().logout();
           }
         }
 
-        if (import.meta.env.DEV) {
-          const { accessToken, user } = await authApi.devLogin();
-          setAuth(user, accessToken);
-          setLoading(false);
-          return;
-        }
+        const tg = await waitForTelegram();
 
-        const tg = window.Telegram?.WebApp;
-        const initData = tg?.initData;
-
-        if (!initData) {
+        if (!tg) {
           throw new Error('Not running in Telegram');
         }
 
         tg.ready();
         tg.expand();
 
+        const initData = tg.initData;
+
+        if (!initData) {
+          throw new Error('Telegram initData is empty. Please open via Telegram bot.');
+        }
+
         const { accessToken, user } = await authApi.telegram(initData);
         setAuth(user, accessToken);
       } catch (e: any) {
-        setError(e.message);
+        setError(e.message ?? 'Auth failed');
       } finally {
         setLoading(false);
       }

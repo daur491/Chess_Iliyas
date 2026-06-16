@@ -46,13 +46,29 @@ export class GamesController {
         ? Math.random() > 0.5 ? 'white' : 'black'
         : (dto.color ?? 'white');
 
-    return this.gamesService.createGame({
+    const game = await this.gamesService.createGame({
       whiteId: color === 'white' ? user.id : undefined,
       blackId: color === 'black' ? user.id : undefined,
       timeControl: dto.timeControl,
       isVsBot: true,
       botLevel: dto.botLevel,
     });
+
+    // If bot plays white — make its opening move immediately
+    if (color === 'black') {
+      const botMove = await this.botService.getBotMove(
+        game.currentFen,
+        dto.botLevel,
+      );
+      if (botMove) {
+        try {
+          await this.gamesService.makeMove(game.id, '__bot__', botMove);
+          return this.gamesService.getGameWithMoves(game.id).then(r => r.game);
+        } catch { /* return game as-is on error */ }
+      }
+    }
+
+    return game;
   }
 
   @Get('active')
@@ -104,6 +120,7 @@ export class GamesController {
           return {
             game: botResult.game,
             playerMove: result.move,
+            playerFen: result.game.currentFen,  // FEN after player move, before bot
             botMove: botResult.move,
             isGameOver: botResult.isGameOver,
           };
