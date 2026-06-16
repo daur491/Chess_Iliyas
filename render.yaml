@@ -3,7 +3,7 @@ services:
     name: chess-iliyas-backend
     runtime: node
     region: oregon
-    plan: free
+    plan: starter
     branch: main
     rootDir: backend
     buildCommand: npm ci && npm run build
@@ -33,7 +33,7 @@ services:
       - key: ADMIN_TELEGRAM_IDS
         sync: false
       - key: STOCKFISH_PATH
-        value: stockfish
+        value: /usr/games/stockfish
       - key: FRONTEND_URL
         sync: false
       - key: DB_SYNCHRONIZE
