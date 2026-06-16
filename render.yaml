@@ -6,7 +6,7 @@ services:
     plan: starter
     branch: main
     rootDir: backend
-    buildCommand: npm ci && npm run build
+    buildCommand: apt-get install -y stockfish 2>/dev/null || true && npm ci && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /api/health
     autoDeploy: true
