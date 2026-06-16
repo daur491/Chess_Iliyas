@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 
 const DEPTH_BY_LEVEL: Record<number, number> = {
   1: 2,
@@ -14,6 +14,7 @@ const DEPTH_BY_LEVEL: Record<number, number> = {
 export class BotService implements OnModuleDestroy {
   private readonly logger = new Logger(BotService.name);
   private stockfishPath: string;
+  private stockfishAvailable: boolean | null = null;
 
   constructor(private readonly configService: ConfigService) {
     this.stockfishPath = configService.get<string>(
@@ -27,21 +28,29 @@ export class BotService implements OnModuleDestroy {
   getBotMove(fen: string, level: number): Promise<string | null> {
     return new Promise((resolve) => {
       const depth = DEPTH_BY_LEVEL[level] ?? 8;
-      let process: ChildProcess;
 
-      try {
-        process = spawn(this.stockfishPath);
-      } catch {
-        this.logger.warn('Stockfish not found, returning null');
-        resolve(null);
-        return;
-      }
+      const process = spawn(this.stockfishPath);
+      let resolved = false;
 
-      let output = '';
+      const safeResolve = (val: string | null) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(val);
+        }
+      };
+
+      process.on('error', (err) => {
+        this.logger.warn(`Stockfish unavailable: ${err.message}`);
+        this.stockfishAvailable = false;
+        safeResolve(null);
+      });
+
       const timeout = setTimeout(() => {
         process.kill();
-        resolve(null);
+        safeResolve(null);
       }, 5000);
+
+      let output = '';
 
       process.stdout?.on('data', (data: Buffer) => {
         output += data.toString();
@@ -49,11 +58,8 @@ export class BotService implements OnModuleDestroy {
           clearTimeout(timeout);
           const match = output.match(/bestmove\s+(\S+)/);
           process.kill();
-          if (match) {
-            resolve(this.uciToSan(match[1], fen));
-          } else {
-            resolve(null);
-          }
+          this.stockfishAvailable = true;
+          safeResolve(match ? this.uciToSan(match[1], fen) : null);
         }
       });
 
@@ -67,26 +73,32 @@ export class BotService implements OnModuleDestroy {
     return uci;
   }
 
-  async analyzePosition(fen: string, depth = 20): Promise<{
-    score: number;
-    bestMove: string;
-    lines: string[];
-  }> {
+  async analyzePosition(
+    fen: string,
+    depth = 20,
+  ): Promise<{ score: number; bestMove: string; lines: string[] }> {
     return new Promise((resolve) => {
-      let process: ChildProcess;
+      const process = spawn(this.stockfishPath);
+      let resolved = false;
 
-      try {
-        process = spawn(this.stockfishPath);
-      } catch {
-        resolve({ score: 0, bestMove: '', lines: [] });
-        return;
-      }
+      const safeResolve = (val: { score: number; bestMove: string; lines: string[] }) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(val);
+        }
+      };
 
-      let output = '';
+      process.on('error', (err) => {
+        this.logger.warn(`Stockfish unavailable for analysis: ${err.message}`);
+        safeResolve({ score: 0, bestMove: '', lines: [] });
+      });
+
       const timeout = setTimeout(() => {
         process.kill();
-        resolve({ score: 0, bestMove: '', lines: [] });
+        safeResolve({ score: 0, bestMove: '', lines: [] });
       }, 10000);
+
+      let output = '';
 
       process.stdout?.on('data', (data: Buffer) => {
         output += data.toString();
@@ -95,7 +107,7 @@ export class BotService implements OnModuleDestroy {
           process.kill();
           const scoreMatch = output.match(/score cp (-?\d+)/);
           const bestMoveMatch = output.match(/bestmove\s+(\S+)/);
-          resolve({
+          safeResolve({
             score: scoreMatch ? parseInt(scoreMatch[1]) : 0,
             bestMove: bestMoveMatch ? bestMoveMatch[1] : '',
             lines: [],
@@ -107,5 +119,9 @@ export class BotService implements OnModuleDestroy {
       process.stdin?.write(`position fen ${fen}\n`);
       process.stdin?.write(`go depth ${depth}\n`);
     });
+  }
+
+  isAvailable(): boolean {
+    return this.stockfishAvailable !== false;
   }
 }
