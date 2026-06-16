@@ -45,15 +45,31 @@ export const GamePage = () => {
   const [selected, setSelected] = useState<string | null>(null);
   const [legalTargets, setLegalTargets] = useState<string[]>([]);
   const [moving, setMoving] = useState(false);
+  // lastMove: { from, to } — used for highlight + slide animation
+  const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
+  // animKey bumped each time a new move lands so CSS animation re-triggers
+  const [animKey, setAnimKey] = useState(0);
   const chessRef = useRef(new Chess());
 
-  useEffect(() => { reset(); setSelected(null); setLegalTargets([]); }, [id]);
+  useEffect(() => { reset(); setSelected(null); setLegalTargets([]); setLastMove(null); setAnimKey(0); }, [id]);
 
   useEffect(() => {
     if (game?.currentFen) {
       try { chessRef.current = new Chess(game.currentFen); } catch {}
     }
   }, [game?.currentFen]);
+
+  // Sync lastMove from moves list — catches bot moves too
+  useEffect(() => {
+    if (moves.length === 0) return;
+    const last = moves[moves.length - 1];
+    if (last?.moveUci && last.moveUci.length >= 4) {
+      const from = last.moveUci.slice(0, 2);
+      const to   = last.moveUci.slice(2, 4);
+      setLastMove({ from, to });
+      setAnimKey((k) => k + 1);
+    }
+  }, [moves]);
 
   useEffect(() => {
     if (game) return;
@@ -132,6 +148,22 @@ export const GamePage = () => {
   const files = isBlack ? [...FILES].reverse() : FILES;
   const ranks = isBlack ? [...RANKS].reverse() : RANKS;
 
+  // Compute slide offset in board cells for the piece that just landed on `to`
+  const getSlideStyle = (sq: string): React.CSSProperties | undefined => {
+    if (!lastMove || sq !== lastMove.to) return undefined;
+    const fromFile = FILES.indexOf(lastMove.from[0]);
+    const fromRank = RANKS.indexOf(lastMove.from[1]);
+    const toFile   = FILES.indexOf(sq[0]);
+    const toRank   = RANKS.indexOf(sq[1]);
+    let dx = fromFile - toFile;
+    let dy = fromRank - toRank;
+    if (isBlack) { dx = -dx; dy = -dy; }
+    return {
+      '--slide-x': `${dx * 100}%`,
+      '--slide-y': `${dy * 100}%`,
+    } as React.CSSProperties;
+  };
+
   const handleSquareClick = (sq: string) => {
     if (!myTurn || moving) return;
     const chess = chessRef.current;
@@ -196,7 +228,9 @@ export const GamePage = () => {
               const isLight = (FILES.indexOf(file) + RANKS.indexOf(rank)) % 2 !== 0;
               const isSelected = selected === sq;
               const isTarget = legalTargets.includes(sq);
-              const isLastMove = false;
+              const isLastFrom = lastMove?.from === sq;
+              const isLastTo   = lastMove?.to === sq;
+              const slideStyle = getSlideStyle(sq);
 
               return (
                 <div
@@ -206,11 +240,17 @@ export const GamePage = () => {
                     isLight ? 'game__square--light' : 'game__square--dark',
                     isSelected ? 'game__square--selected' : '',
                     isTarget ? 'game__square--target' : '',
+                    isLastFrom ? 'game__square--last-from' : '',
+                    isLastTo   ? 'game__square--last-to'   : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => handleSquareClick(sq)}
                 >
                   {piece && (
-                    <span className={`game__piece game__piece--${piece[0]}`}>
+                    <span
+                      key={`${sq}-${animKey}`}
+                      className={`game__piece game__piece--${piece[0]}${slideStyle ? ' game__piece--slide' : ''}`}
+                      style={slideStyle}
+                    >
                       {PIECES[piece]}
                     </span>
                   )}
