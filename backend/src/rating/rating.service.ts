@@ -17,10 +17,13 @@ export class RatingService implements OnModuleDestroy {
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
   ) {
-    this.redis = new Redis({
-      host: configService.get('REDIS_HOST', 'localhost'),
-      port: configService.get<number>('REDIS_PORT', 6379),
-    });
+    const redisUrl = configService.get<string>('REDIS_URL');
+    this.redis = redisUrl
+      ? new Redis(redisUrl, { tls: { rejectUnauthorized: false } })
+      : new Redis({
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+        });
   }
 
   onModuleDestroy() {

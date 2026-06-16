@@ -17,10 +17,13 @@ export class TimerService implements OnModuleDestroy {
   private onTimeoutCallbacks = new Map<string, (loser: 'white' | 'black') => void>();
 
   constructor(private readonly configService: ConfigService) {
-    this.redis = new Redis({
-      host: configService.get('REDIS_HOST', 'localhost'),
-      port: configService.get<number>('REDIS_PORT', 6379),
-    });
+    const redisUrl = configService.get<string>('REDIS_URL');
+    this.redis = redisUrl
+      ? new Redis(redisUrl, { tls: { rejectUnauthorized: false } })
+      : new Redis({
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+        });
   }
 
   onModuleDestroy() {

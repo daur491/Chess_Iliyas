@@ -15,6 +15,7 @@ import { TournamentsModule } from './tournaments/tournaments.module';
 import { AchievementsModule } from './achievements/achievements.module';
 import { RatingModule } from './rating/rating.module';
 import { AdminModule } from './admin/admin.module';
+import { HealthController } from './health.controller';
 import { User } from './shared/entities/user.entity';
 import { Game } from './shared/entities/game.entity';
 import { Move } from './shared/entities/move.entity';
@@ -25,39 +26,55 @@ import { Tournament } from './shared/entities/tournament.entity';
 import { TournamentParticipant } from './shared/entities/tournament-participant.entity';
 
 @Module({
+  controllers: [HealthController],
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get('DB_USER', 'chess_user'),
-        password: config.get('DB_PASSWORD', 'chess_password'),
-        database: config.get('DB_NAME', 'chess_db'),
-        entities: [
-          User,
-          Game,
-          Move,
-          Puzzle,
-          PuzzleAttempt,
-          Achievement,
-          Tournament,
-          TournamentParticipant,
-        ],
-        synchronize: config.get('NODE_ENV') !== 'production',
-        logging: config.get('NODE_ENV') === 'development',
-      }),
+      useFactory: (config: ConfigService) => {
+        const databaseUrl = config.get<string>('DATABASE_URL');
+        if (databaseUrl) {
+          return {
+            type: 'postgres',
+            url: databaseUrl,
+            entities: [
+              User, Game, Move, Puzzle, PuzzleAttempt,
+              Achievement, Tournament, TournamentParticipant,
+            ],
+            synchronize: config.get('DB_SYNCHRONIZE', 'true') !== 'false',
+            ssl: { rejectUnauthorized: false },
+          };
+        }
+        return {
+          type: 'postgres',
+          host: config.get('DB_HOST', 'localhost'),
+          port: config.get<number>('DB_PORT', 5432),
+          username: config.get('DB_USER', 'chess_user'),
+          password: config.get('DB_PASSWORD', 'chess_password'),
+          database: config.get('DB_NAME', 'chess_db'),
+          entities: [
+            User, Game, Move, Puzzle, PuzzleAttempt,
+            Achievement, Tournament, TournamentParticipant,
+          ],
+          synchronize: config.get('NODE_ENV') !== 'production',
+          logging: config.get('NODE_ENV') === 'development',
+        };
+      },
     }),
     BullModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        redis: {
-          host: config.get('REDIS_HOST', 'localhost'),
-          port: config.get<number>('REDIS_PORT', 6379),
-        },
-      }),
+      useFactory: (config: ConfigService) => {
+        const redisUrl = config.get<string>('REDIS_URL');
+        if (redisUrl) {
+          return { redis: redisUrl };
+        }
+        return {
+          redis: {
+            host: config.get('REDIS_HOST', 'localhost'),
+            port: config.get<number>('REDIS_PORT', 6379),
+          },
+        };
+      },
     }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),

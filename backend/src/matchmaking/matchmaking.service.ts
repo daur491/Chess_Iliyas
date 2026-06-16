@@ -29,10 +29,13 @@ export class MatchmakingService implements OnModuleDestroy {
     private readonly gamesService: GamesService,
     private readonly usersService: UsersService,
   ) {
-    this.redis = new Redis({
-      host: configService.get('REDIS_HOST', 'localhost'),
-      port: configService.get<number>('REDIS_PORT', 6379),
-    });
+    const redisUrl = configService.get<string>('REDIS_URL');
+    this.redis = redisUrl
+      ? new Redis(redisUrl, { tls: { rejectUnauthorized: false } })
+      : new Redis({
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+        });
     this.matchmakingInterval = setInterval(
       () => this.processQueues(),
       2000,
