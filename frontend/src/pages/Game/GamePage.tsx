@@ -95,6 +95,7 @@ export const GamePage = () => {
   const [moving, setMoving] = useState(false);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [flyingPiece, setFlyingPiece] = useState<FlyingPiece | null>(null);
+  const [promotionPending, setPromotionPending] = useState<{ from: string; to: string } | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const chessRef = useRef(new Chess());
 
@@ -264,7 +265,13 @@ export const GamePage = () => {
         const piece = position[selected];
         const isPromotion = piece === (isWhite ? 'wP' : 'bP') &&
           ((isWhite && sq[1] === '8') || (isBlack && sq[1] === '1'));
-        doMove(selected, sq, isPromotion ? 'q' : '', position, files, ranks);
+        if (isPromotion) {
+          setPromotionPending({ from: selected, to: sq });
+          setSelected(null);
+          setLegalTargets([]);
+          return;
+        }
+        doMove(selected, sq, '', position, files, ranks);
         return;
       }
       const clickedPiece = position[sq];
@@ -321,6 +328,33 @@ export const GamePage = () => {
 
       {/* Board */}
       <div className="game__board-wrap">
+        {promotionPending && (
+          <div className="game__promotion-overlay">
+            <div className="game__promotion-dialog">
+              <div className="game__promotion-title">Выберите фигуру</div>
+              <div className="game__promotion-pieces">
+                {(['q', 'r', 'b', 'n'] as const).map((piece) => {
+                  const code = (isWhite ? 'w' : 'b') + piece.toUpperCase();
+                  const labels: Record<string, string> = { q: 'Ферзь', r: 'Ладья', b: 'Слон', n: 'Конь' };
+                  return (
+                    <button
+                      key={piece}
+                      className="game__promotion-btn"
+                      onClick={() => {
+                        const { from, to } = promotionPending;
+                        setPromotionPending(null);
+                        doMove(from, to, piece, position, files, ranks);
+                      }}
+                    >
+                      <PieceSvg code={code} />
+                      <span className="game__promotion-label">{labels[piece]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="game__board" ref={boardRef}>
           {ranks.map((rank) =>
             files.map((file) => {

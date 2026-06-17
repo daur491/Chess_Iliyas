@@ -73,6 +73,72 @@
   align-items: center;
   justify-content: center;
   padding: 4px;
+  position: relative;
+}
+
+.game__promotion-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  border-radius: 6px;
+}
+
+.game__promotion-dialog {
+  background: var(--surface, #1a1a2e);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+.game__promotion-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #f0f0f5);
+}
+
+.game__promotion-pieces {
+  display: flex;
+  gap: 8px;
+}
+
+.game__promotion-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 12px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  min-width: 60px;
+}
+
+.game__promotion-btn:hover {
+  background: rgba(79,142,247,0.2);
+  border-color: var(--accent, #4f8ef7);
+  transform: translateY(-2px);
+}
+
+.game__promotion-btn .piece-svg {
+  width: 44px;
+  height: 44px;
+}
+
+.game__promotion-label {
+  font-size: 11px;
+  color: var(--text-muted, #9090a8);
+  white-space: nowrap;
 }
 
 /* The board grid — always square */
