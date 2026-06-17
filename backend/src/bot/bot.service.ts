@@ -4,12 +4,20 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const DEPTH_BY_LEVEL: Record<number, number> = {
-  1: 2,
-  2: 5,
-  3: 8,
-  4: 12,
-  5: 20,
+interface BotConfig {
+  depth: number;
+  skillLevel: number;  // Stockfish Skill Level 0-20
+  uciElo: number;      // Stockfish UCI_Elo (1320-3190)
+  limitStrength: boolean;
+  movetime?: number;   // max ms per move (дополнительное ограничение для слабых уровней)
+}
+
+const BOT_CONFIG: Record<number, BotConfig> = {
+  1: { depth: 1,  skillLevel: 0,  uciElo: 800,  limitStrength: true,  movetime: 100  },
+  2: { depth: 3,  skillLevel: 5,  uciElo: 1100, limitStrength: true,  movetime: 300  },
+  3: { depth: 6,  skillLevel: 10, uciElo: 1500, limitStrength: true,  movetime: 1000 },
+  4: { depth: 10, skillLevel: 16, uciElo: 1800, limitStrength: true,  movetime: 2000 },
+  5: { depth: 18, skillLevel: 20, uciElo: 2200, limitStrength: false               },
 };
 
 @Injectable()
@@ -34,9 +42,9 @@ export class BotService implements OnModuleDestroy {
 
   getBotMove(fen: string, level: number): Promise<string | null> {
     return new Promise((resolve) => {
-      const depth = DEPTH_BY_LEVEL[level] ?? 8;
+      const config = BOT_CONFIG[level] ?? BOT_CONFIG[3];
 
-      const process = spawn(this.stockfishPath);
+      const sfProcess = spawn(this.stockfishPath);
       let resolved = false;
 
       const safeResolve = (val: string | null) => {
@@ -46,33 +54,48 @@ export class BotService implements OnModuleDestroy {
         }
       };
 
-      process.on('error', (err) => {
+      sfProcess.on('error', (err) => {
         this.logger.warn(`Stockfish unavailable: ${err.message}`);
         this.stockfishAvailable = false;
         safeResolve(null);
       });
 
+      const timeoutMs = (config.movetime ?? 5000) + 3000;
       const timeout = setTimeout(() => {
-        process.kill();
+        sfProcess.kill();
         safeResolve(null);
-      }, 5000);
+      }, timeoutMs);
 
       let output = '';
 
-      process.stdout?.on('data', (data: Buffer) => {
+      sfProcess.stdout?.on('data', (data: Buffer) => {
         output += data.toString();
         if (output.includes('bestmove')) {
           clearTimeout(timeout);
           const match = output.match(/bestmove\s+(\S+)/);
-          process.kill();
+          sfProcess.kill();
           this.stockfishAvailable = true;
           safeResolve(match ? this.uciToSan(match[1], fen) : null);
         }
       });
 
-      process.stdin?.write('uci\n');
-      process.stdin?.write(`position fen ${fen}\n`);
-      process.stdin?.write(`go depth ${depth}\n`);
+      // Настраиваем Stockfish через UCI перед отправкой позиции
+      sfProcess.stdin?.write('uci\n');
+      sfProcess.stdin?.write(`setoption name Skill Level value ${config.skillLevel}\n`);
+      if (config.limitStrength) {
+        sfProcess.stdin?.write('setoption name UCI_LimitStrength value true\n');
+        sfProcess.stdin?.write(`setoption name UCI_Elo value ${config.uciElo}\n`);
+      } else {
+        sfProcess.stdin?.write('setoption name UCI_LimitStrength value false\n');
+      }
+      sfProcess.stdin?.write('isready\n');
+      sfProcess.stdin?.write(`position fen ${fen}\n`);
+
+      if (config.movetime) {
+        sfProcess.stdin?.write(`go depth ${config.depth} movetime ${config.movetime}\n`);
+      } else {
+        sfProcess.stdin?.write(`go depth ${config.depth}\n`);
+      }
     });
   }
 
@@ -85,7 +108,7 @@ export class BotService implements OnModuleDestroy {
     depth = 20,
   ): Promise<{ score: number; bestMove: string; lines: string[] }> {
     return new Promise((resolve) => {
-      const process = spawn(this.stockfishPath);
+      const sfProcess = spawn(this.stockfishPath);
       let resolved = false;
 
       const safeResolve = (val: { score: number; bestMove: string; lines: string[] }) => {
@@ -95,23 +118,23 @@ export class BotService implements OnModuleDestroy {
         }
       };
 
-      process.on('error', (err) => {
+      sfProcess.on('error', (err) => {
         this.logger.warn(`Stockfish unavailable for analysis: ${err.message}`);
         safeResolve({ score: 0, bestMove: '', lines: [] });
       });
 
       const timeout = setTimeout(() => {
-        process.kill();
+        sfProcess.kill();
         safeResolve({ score: 0, bestMove: '', lines: [] });
       }, 10000);
 
       let output = '';
 
-      process.stdout?.on('data', (data: Buffer) => {
+      sfProcess.stdout?.on('data', (data: Buffer) => {
         output += data.toString();
         if (output.includes('bestmove')) {
           clearTimeout(timeout);
-          process.kill();
+          sfProcess.kill();
           const scoreMatch = output.match(/score cp (-?\d+)/);
           const bestMoveMatch = output.match(/bestmove\s+(\S+)/);
           safeResolve({
@@ -122,9 +145,11 @@ export class BotService implements OnModuleDestroy {
         }
       });
 
-      process.stdin?.write('uci\n');
-      process.stdin?.write(`position fen ${fen}\n`);
-      process.stdin?.write(`go depth ${depth}\n`);
+      sfProcess.stdin?.write('uci\n');
+      sfProcess.stdin?.write('setoption name UCI_LimitStrength value false\n');
+      sfProcess.stdin?.write('isready\n');
+      sfProcess.stdin?.write(`position fen ${fen}\n`);
+      sfProcess.stdin?.write(`go depth ${depth}\n`);
     });
   }
 
