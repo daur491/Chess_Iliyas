@@ -21,7 +21,16 @@ export const useGameStore = create<GameState>((set) => ({
   moves: [],
   timerState: null,
   isGameOver: false,
-  setGame: (game) => set({ game }),
+  setGame: (game) =>
+    set((s) => ({
+      game: {
+        ...game,
+        // Preserve user relations if the incoming object doesn't have them
+        // (e.g. REST move response that skips JOIN on white/black)
+        white: game.white ?? s.game?.white,
+        black: game.black ?? s.game?.black,
+      },
+    })),
   setMoves: (moves) => set({ moves }),
   addMove: (move) => set((s) => ({ moves: [...s.moves, move] })),
   updateFen: (fen) =>

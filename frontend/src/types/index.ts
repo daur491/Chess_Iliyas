@@ -57,6 +57,7 @@ export interface Game {
   currentFen: string;
   whiteEloChange: number;
   blackEloChange: number;
+  drawOfferedBy?: string | null;
   startedAt: string;
   endedAt?: string;
 }

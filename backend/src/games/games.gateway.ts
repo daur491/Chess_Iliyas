@@ -167,6 +167,32 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+  broadcastMoveMade(
+    gameId: string,
+    move: any,
+    game: any,
+    isGameOver: boolean,
+  ): void {
+    this.server.to(`game:${gameId}`).emit('move_made', {
+      move,
+      fen: game.currentFen,
+      isGameOver,
+      gameResult: isGameOver ? game.result : null,
+      endReason: isGameOver ? game.endReason : null,
+      whiteEloChange: isGameOver ? game.whiteEloChange : null,
+      blackEloChange: isGameOver ? game.blackEloChange : null,
+    });
+  }
+
+  broadcastGameOver(gameId: string, game: any): void {
+    this.server.to(`game:${gameId}`).emit('game_over', {
+      result: game.result,
+      endReason: game.endReason,
+      whiteEloChange: game.whiteEloChange,
+      blackEloChange: game.blackEloChange,
+    });
+  }
+
   emitMatchFound(userId: string, gameId: string, color: 'white' | 'black') {
     const socketId = this.userSockets.get(userId);
     if (socketId) {

@@ -89,17 +89,25 @@ export const GamePage = () => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { game, moves, timerState, isGameOver, setGame, setMoves, setGameOver, reset } = useGameStore();
-  const { offerDraw, sendMove: _sendMove, resign: _resign } = useGameSocket(id);
+  const { offerDraw, acceptDraw, sendMove: _sendMove, resign: _resign, drawOfferedBy } = useGameSocket(id);
   const [selected, setSelected] = useState<string | null>(null);
   const [legalTargets, setLegalTargets] = useState<string[]>([]);
   const [moving, setMoving] = useState(false);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [flyingPiece, setFlyingPiece] = useState<FlyingPiece | null>(null);
   const [promotionPending, setPromotionPending] = useState<{ from: string; to: string } | null>(null);
+  const [drawDismissed, setDrawDismissed] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const chessRef = useRef(new Chess());
 
-  useEffect(() => { reset(); setSelected(null); setLegalTargets([]); setLastMove(null); setFlyingPiece(null); }, [id]);
+  useEffect(() => {
+    reset();
+    setSelected(null);
+    setLegalTargets([]);
+    setLastMove(null);
+    setFlyingPiece(null);
+    setDrawDismissed(false);
+  }, [id]);
 
   useEffect(() => {
     if (game?.currentFen) {
@@ -115,6 +123,8 @@ export const GamePage = () => {
       setLastMove({ from: last.moveUci.slice(0, 2), to: last.moveUci.slice(2, 4) });
     }
   }, [moves]);
+
+  useEffect(() => { setDrawDismissed(false); }, [drawOfferedBy]);
 
   const movesCountRef = useRef(0);
 
@@ -251,6 +261,14 @@ export const GamePage = () => {
   const self = isWhite ? game.white : game.black;
   const opponentName = opponent?.username ?? (game.isVsBot ? `Бот ${game.botLevel ?? ''}` : '?');
   const selfName = self?.username ?? user?.username ?? 'Вы';
+
+  // Show draw offer banner only when the OPPONENT offered (not self)
+  const activeDrawOffer = drawOfferedBy ?? game.drawOfferedBy ?? null;
+  const drawPendingFromOpponent =
+    !isGameOver &&
+    !drawDismissed &&
+    activeDrawOffer !== null &&
+    activeDrawOffer !== user?.id;
 
   const position = parseFen(game.currentFen);
   const files = isBlack ? [...FILES].reverse() : FILES;
@@ -430,11 +448,36 @@ export const GamePage = () => {
           </div>
         )}
 
+        {drawPendingFromOpponent && (
+          <div className="game__draw-offer">
+            <span className="game__draw-offer-text">½ Противник предлагает ничью</span>
+            <div className="game__draw-offer-btns">
+              <button
+                className="game__draw-accept"
+                onClick={() => { acceptDraw(); }}
+              >
+                Принять
+              </button>
+              <button
+                className="game__draw-decline"
+                onClick={() => setDrawDismissed(true)}
+              >
+                Отклонить
+              </button>
+            </div>
+          </div>
+        )}
+
         {!isGameOver && (
           <div className="game__actions">
-            <button className="game__action-btn game__action-btn--draw" onClick={() => {
-              if (confirm('Предложить ничью?')) offerDraw();
-            }}>½ Ничья</button>
+            <button
+              className="game__action-btn game__action-btn--draw"
+              disabled={activeDrawOffer === user?.id}
+              title={activeDrawOffer === user?.id ? 'Ожидание ответа...' : ''}
+              onClick={() => { offerDraw(); }}
+            >
+              {activeDrawOffer === user?.id ? '½ Ожидание...' : '½ Ничья'}
+            </button>
             <button className="game__action-btn game__action-btn--resign" onClick={() => {
               if (confirm('Сдаться?')) handleResign();
             }}>⚑ Сдаться</button>

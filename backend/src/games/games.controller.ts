@@ -12,7 +12,9 @@ import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../shared/decorators/current-user.decorator';
 import { User } from '../shared/entities/user.entity';
 import { GamesService } from './games.service';
+import { GamesGateway } from './games.gateway';
 import { BotService } from '../bot/bot.service';
+import { TimerService } from '../timers/timer.service';
 import { TimeControl } from '../shared/entities/game.entity';
 
 class CreateBotGameDto {
@@ -33,7 +35,9 @@ class CreateBotGameDto {
 export class GamesController {
   constructor(
     private readonly gamesService: GamesService,
+    private readonly gamesGateway: GamesGateway,
     private readonly botService: BotService,
+    private readonly timerService: TimerService,
   ) {}
 
   @Post('vs-bot')
@@ -104,8 +108,18 @@ export class GamesController {
   ) {
     const result = await this.gamesService.makeMove(id, user.id, dto.move);
 
-    // If vs bot and game not over — make bot move immediately
-    if (result.game.isVsBot && !result.isGameOver) {
+    if (!result.game.isVsBot) {
+      // PvP: broadcast via WebSocket so opponent sees the move immediately
+      await this.timerService.switchTurn(id);
+      this.gamesGateway.broadcastMoveMade(id, result.move, result.game, result.isGameOver);
+      if (result.isGameOver) {
+        await this.timerService.stopTimer(id);
+      }
+      return result;
+    }
+
+    // vs bot and game not over — make bot move immediately
+    if (!result.isGameOver) {
       const botMove = await this.botService.getBotMove(
         result.game.currentFen,
         result.game.botLevel ?? 3,
@@ -120,7 +134,7 @@ export class GamesController {
           return {
             game: botResult.game,
             playerMove: result.move,
-            playerFen: result.game.currentFen,  // FEN after player move, before bot
+            playerFen: result.game.currentFen,
             botMove: botResult.move,
             isGameOver: botResult.isGameOver,
           };
