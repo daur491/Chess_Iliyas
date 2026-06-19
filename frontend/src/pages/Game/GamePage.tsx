@@ -331,7 +331,11 @@ export const GamePage = () => {
       <div className="game__player">
         <div className="game__player-info">
           <div className="game__avatar">
-            <div className="game__avatar-ph">{game.isVsBot ? '🤖' : opponentName[0]}</div>
+            {opponent?.avatarUrl ? (
+              <img className="game__avatar-img" src={opponent.avatarUrl} alt={opponentName} />
+            ) : (
+              <div className="game__avatar-ph">{game.isVsBot ? '🤖' : opponentName[0]?.toUpperCase()}</div>
+            )}
           </div>
           <div>
             <div className="game__player-name">{opponentName}</div>
@@ -424,7 +428,11 @@ export const GamePage = () => {
         <div className="game__player">
           <div className="game__player-info">
             <div className="game__avatar">
-              <div className="game__avatar-ph">{selfName[0]?.toUpperCase()}</div>
+              {(self?.avatarUrl ?? user?.avatarUrl) ? (
+                <img className="game__avatar-img" src={self?.avatarUrl ?? user?.avatarUrl} alt={selfName} />
+              ) : (
+                <div className="game__avatar-ph">{selfName[0]?.toUpperCase()}</div>
+              )}
             </div>
             <div>
               <div className="game__player-name">{selfName}</div>

@@ -16,9 +16,16 @@ export const getSocket = (): Socket => {
 
   if (!socket) {
     currentToken = token;
+    // Connect to the "/ws" Socket.io namespace. The server uses the default
+    // Socket.io path ("/socket.io/"), so we must pass the namespace as part of
+    // the connection URL while keeping the default path — do NOT treat "/ws"
+    // as an HTTP path. `io(host + "/ws")` correctly targets the namespace.
     socket = io(`${WS_URL}/ws`, {
+      path: '/socket.io',
       query: { token },
-      transports: ['websocket'],
+      // Allow polling fallback first, then upgrade — more robust on hosts
+      // (e.g. Render) where a direct websocket upgrade may fail.
+      transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,

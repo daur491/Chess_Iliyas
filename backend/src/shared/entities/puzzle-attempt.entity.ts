@@ -15,14 +15,14 @@ export class PuzzleAttempt {
   id: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @Column()
   userId: string;
 
   @ManyToOne(() => Puzzle, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'puzzle_id' })
+  @JoinColumn({ name: 'puzzleId' })
   puzzle: Puzzle;
 
   @Column()

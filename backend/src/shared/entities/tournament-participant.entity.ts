@@ -15,14 +15,14 @@ export class TournamentParticipant {
   id: string;
 
   @ManyToOne(() => Tournament, (t) => t.participants, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'tournament_id' })
+  @JoinColumn({ name: 'tournamentId' })
   tournament: Tournament;
 
   @Column()
   tournamentId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @Column()

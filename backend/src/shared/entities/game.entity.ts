@@ -53,14 +53,14 @@ export class Game {
   id: string;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'white_id' })
+  @JoinColumn({ name: 'whiteId' })
   white: User;
 
   @Column({ nullable: true })
   whiteId: string;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'black_id' })
+  @JoinColumn({ name: 'blackId' })
   black: User;
 
   @Column({ nullable: true })

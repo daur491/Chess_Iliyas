@@ -15,7 +15,7 @@ export class Move {
   id: string;
 
   @ManyToOne(() => Game, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'game_id' })
+  @JoinColumn({ name: 'gameId' })
   game: Game;
 
   @Column()
