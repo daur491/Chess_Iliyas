@@ -117,6 +117,29 @@ export const GamePage = () => {
   const ranksRef = useRef<string[]>(RANKS);
   const animatedMovesRef = useRef<number | null>(null);
 
+  // Get center px coords of a square relative to board wrapper
+  const getSquareCenter = useCallback((sq: string, filesArr: string[], ranksArr: string[]) => {
+    const board = boardRef.current;
+    if (!board) return null;
+    const rect = board.getBoundingClientRect();
+    const sqW = rect.width / 8;
+    const sqH = rect.height / 8;
+    return {
+      x: filesArr.indexOf(sq[0]) * sqW + sqW / 2,
+      y: ranksArr.indexOf(sq[1]) * sqH + sqH / 2,
+    };
+  }, []);
+
+  // Start a flying piece animation from->to. Resolves when the slide finishes.
+  const animatePiece = useCallback((piece: string, from: string, to: string, filesArr: string[], ranksArr: string[]) => {
+    const fromCenter = getSquareCenter(from, filesArr, ranksArr);
+    const toCenter   = getSquareCenter(to,   filesArr, ranksArr);
+    if (!fromCenter || !toCenter || !piece) return Promise.resolve();
+    const durationMs = animMsRef.current;
+    setFlyingPiece({ piece, fromSq: from, toSq: to, fromX: fromCenter.x, fromY: fromCenter.y, toX: toCenter.x, toY: toCenter.y, durationMs });
+    return new Promise<void>((resolve) => setTimeout(() => { setFlyingPiece(null); resolve(); }, durationMs));
+  }, [getSquareCenter]);
+
   useEffect(() => {
     reset();
     setSelected(null);
@@ -223,29 +246,6 @@ export const GamePage = () => {
   // All hooks must be before any early return
   const isWhite = game?.whiteId === user?.id;
   const isBlack = game?.blackId === user?.id;
-
-  // Get center px coords of a square relative to board wrapper
-  const getSquareCenter = useCallback((sq: string, filesArr: string[], ranksArr: string[]) => {
-    const board = boardRef.current;
-    if (!board) return null;
-    const rect = board.getBoundingClientRect();
-    const sqW = rect.width / 8;
-    const sqH = rect.height / 8;
-    return {
-      x: filesArr.indexOf(sq[0]) * sqW + sqW / 2,
-      y: ranksArr.indexOf(sq[1]) * sqH + sqH / 2,
-    };
-  }, []);
-
-  // Start a flying piece animation from->to. Resolves when the slide finishes.
-  const animatePiece = useCallback((piece: string, from: string, to: string, filesArr: string[], ranksArr: string[]) => {
-    const fromCenter = getSquareCenter(from, filesArr, ranksArr);
-    const toCenter   = getSquareCenter(to,   filesArr, ranksArr);
-    if (!fromCenter || !toCenter || !piece) return Promise.resolve();
-    const durationMs = animMsRef.current;
-    setFlyingPiece({ piece, fromSq: from, toSq: to, fromX: fromCenter.x, fromY: fromCenter.y, toX: toCenter.x, toY: toCenter.y, durationMs });
-    return new Promise<void>((resolve) => setTimeout(() => { setFlyingPiece(null); resolve(); }, durationMs));
-  }, [getSquareCenter]);
 
   const doMove = useCallback(async (from: string, to: string, promotion = '', positionSnapshot: Record<string, string>, filesArr: string[], ranksArr: string[]) => {
     if (moving || !id) return;
