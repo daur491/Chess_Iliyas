@@ -50,6 +50,9 @@ export class GamesController {
         ? Math.random() > 0.5 ? 'white' : 'black'
         : (dto.color ?? 'white');
 
+    // Close any lingering active games so the user has at most one ongoing game.
+    await this.gamesService.abandonActiveGames(user.id);
+
     const game = await this.gamesService.createGame({
       whiteId: color === 'white' ? user.id : undefined,
       blackId: color === 'black' ? user.id : undefined,
@@ -149,6 +152,12 @@ export class GamesController {
 
   @Post(':id/resign')
   async resign(@Param('id') id: string, @CurrentUser() user: User) {
-    return this.gamesService.resign(id, user.id);
+    const game = await this.gamesService.resign(id, user.id);
+    // PvP: notify the opponent immediately that the game is over.
+    if (!game.isVsBot) {
+      await this.timerService.stopTimer(id);
+      this.gamesGateway.broadcastGameOver(id, game);
+    }
+    return game;
   }
 }

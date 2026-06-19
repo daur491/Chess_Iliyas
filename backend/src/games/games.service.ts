@@ -162,6 +162,18 @@ export class GamesService {
     return this.finishGame(game, chess, GameEndReason.DRAW_AGREEMENT);
   }
 
+  // Marks all of a user's still-active games as abandoned. Called before
+  // starting a new game so old/closed games don't linger as "active".
+  async abandonActiveGames(userId: string): Promise<void> {
+    await this.gamesRepo
+      .createQueryBuilder()
+      .update(Game)
+      .set({ status: GameStatus.ABANDONED, endedAt: () => 'NOW()' })
+      .where('(whiteId = :uid OR blackId = :uid)', { uid: userId })
+      .andWhere('status = :status', { status: GameStatus.ACTIVE })
+      .execute();
+  }
+
   async getActiveGames(userId: string): Promise<Game[]> {
     return this.gamesRepo
       .createQueryBuilder('g')
