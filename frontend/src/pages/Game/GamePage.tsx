@@ -78,10 +78,23 @@ function parseFen(fen: string): Record<string, string> {
 // Flying piece state during animation
 interface FlyingPiece {
   piece: string;   // e.g. 'wP'
+  fromSq: string;
+  toSq: string;
   fromX: number;  // px relative to board wrapper
   fromY: number;
   toX: number;
   toY: number;
+  durationMs: number;
+}
+
+// Per-move animation duration depends on the time control: faster games get a
+// snappier slide, slower games a smoother one.
+//   >= 10 min (600s) -> 300ms;  <= 5 min (300s) -> 200ms;  in between -> linear.
+function getMoveAnimMs(timeSeconds: number): number {
+  if (timeSeconds >= 600) return 300;
+  if (timeSeconds <= 300) return 200;
+  const t = (timeSeconds - 300) / (600 - 300);
+  return Math.round(200 + t * (300 - 200));
 }
 
 export const GamePage = () => {
@@ -99,6 +112,10 @@ export const GamePage = () => {
   const [drawDismissed, setDrawDismissed] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
   const chessRef = useRef(new Chess());
+  const animMsRef = useRef(250);
+  const filesRef = useRef<string[]>(FILES);
+  const ranksRef = useRef<string[]>(RANKS);
+  const animatedMovesRef = useRef<number | null>(null);
 
   useEffect(() => {
     reset();
@@ -107,6 +124,7 @@ export const GamePage = () => {
     setLastMove(null);
     setFlyingPiece(null);
     setDrawDismissed(false);
+    animatedMovesRef.current = null;
   }, [id]);
 
   useEffect(() => {
@@ -115,14 +133,54 @@ export const GamePage = () => {
     }
   }, [game?.currentFen]);
 
-  // Sync lastMove from moves list — catches bot moves too
   useEffect(() => {
-    if (moves.length === 0) return;
-    const last = moves[moves.length - 1];
-    if (last?.moveUci && last.moveUci.length >= 4) {
-      setLastMove({ from: last.moveUci.slice(0, 2), to: last.moveUci.slice(2, 4) });
+    if (game?.timeSeconds) {
+      animMsRef.current = getMoveAnimMs(game.timeSeconds);
     }
-  }, [moves]);
+  }, [game?.timeSeconds]);
+
+  // Sync lastMove from moves list and animate opponent/bot moves as they arrive.
+  // animatedMovesRef tracks how many moves we've already reflected (our own moves
+  // are animated in doMove). Initialized lazily on first sync.
+  useEffect(() => {
+    if (moves.length === 0) {
+      animatedMovesRef.current = 0;
+      return;
+    }
+    const last = moves[moves.length - 1];
+    if (!last?.moveUci || last.moveUci.length < 4) return;
+
+    const from = last.moveUci.slice(0, 2);
+    const to = last.moveUci.slice(2, 4);
+
+    // First load (page open / reconnect): don't animate history, just highlight.
+    if (animatedMovesRef.current === null) {
+      animatedMovesRef.current = moves.length;
+      setLastMove({ from, to });
+      return;
+    }
+
+    // No new moves since last time.
+    if (moves.length <= animatedMovesRef.current) return;
+
+    animatedMovesRef.current = moves.length;
+
+    // A human opponent's move arrives via socket/poll and must be animated here.
+    // Our own moves and bot moves are already animated inline in doMove, so we
+    // only slide for a real opponent (not us, not the bot placeholder id).
+    const isOwn = !!user?.id && last.playerId === user.id;
+    const isBot = last.playerId === '__bot__';
+    const madeByOpponent = !isOwn && !isBot;
+    const piece = parseFen(last.fenAfter)[to];
+
+    if (madeByOpponent && piece) {
+      animatePiece(piece, from, to, filesRef.current, ranksRef.current).then(() => {
+        setLastMove({ from, to });
+      });
+    } else {
+      setLastMove({ from, to });
+    }
+  }, [moves, user?.id, animatePiece]);
 
   useEffect(() => { setDrawDismissed(false); }, [drawOfferedBy]);
 
@@ -179,13 +237,14 @@ export const GamePage = () => {
     };
   }, []);
 
-  // Start a flying piece animation from->to, returns a cleanup function
+  // Start a flying piece animation from->to. Resolves when the slide finishes.
   const animatePiece = useCallback((piece: string, from: string, to: string, filesArr: string[], ranksArr: string[]) => {
     const fromCenter = getSquareCenter(from, filesArr, ranksArr);
     const toCenter   = getSquareCenter(to,   filesArr, ranksArr);
     if (!fromCenter || !toCenter || !piece) return Promise.resolve();
-    setFlyingPiece({ piece, fromX: fromCenter.x, fromY: fromCenter.y, toX: toCenter.x, toY: toCenter.y });
-    return new Promise<void>((resolve) => setTimeout(() => { setFlyingPiece(null); resolve(); }, 220));
+    const durationMs = animMsRef.current;
+    setFlyingPiece({ piece, fromSq: from, toSq: to, fromX: fromCenter.x, fromY: fromCenter.y, toX: toCenter.x, toY: toCenter.y, durationMs });
+    return new Promise<void>((resolve) => setTimeout(() => { setFlyingPiece(null); resolve(); }, durationMs));
   }, [getSquareCenter]);
 
   const doMove = useCallback(async (from: string, to: string, promotion = '', positionSnapshot: Record<string, string>, filesArr: string[], ranksArr: string[]) => {
@@ -273,6 +332,8 @@ export const GamePage = () => {
   const position = parseFen(game.currentFen);
   const files = isBlack ? [...FILES].reverse() : FILES;
   const ranks = isBlack ? [...RANKS].reverse() : RANKS;
+  filesRef.current = files;
+  ranksRef.current = ranks;
 
   const handleSquareClick = (sq: string) => {
     if (!myTurn || moving) return;
@@ -321,6 +382,7 @@ export const GamePage = () => {
     transform: 'translate(-50%, -50%)',
     '--fly-dx': `${flyingPiece.toX - flyingPiece.fromX}px`,
     '--fly-dy': `${flyingPiece.toY - flyingPiece.fromY}px`,
+    animationDuration: `${flyingPiece.durationMs}ms`,
     pointerEvents: 'none',
     zIndex: 100,
   } as CSSProperties : undefined;
@@ -381,8 +443,12 @@ export const GamePage = () => {
           {ranks.map((rank) =>
             files.map((file) => {
               const sq = file + rank;
-              // Hide piece on "from" square while flying
-              const piece = (flyingPiece && lastMove?.from === sq) ? undefined : position[sq];
+              // Hide the piece on the flying origin and destination squares while
+              // a slide animation is in progress (the overlay piece is shown instead).
+              const piece =
+                flyingPiece && (flyingPiece.fromSq === sq || flyingPiece.toSq === sq)
+                  ? undefined
+                  : position[sq];
               const isLight = (FILES.indexOf(file) + RANKS.indexOf(rank)) % 2 !== 0;
               const isSelected = selected === sq;
               const isTarget = legalTargets.includes(sq);
