@@ -84,6 +84,7 @@ interface FlyingPiece {
   fromY: number;
   toX: number;
   toY: number;
+  size: number;   // px — exact square size so the piece matches the board
   durationMs: number;
 }
 
@@ -117,7 +118,7 @@ export const GamePage = () => {
   const ranksRef = useRef<string[]>(RANKS);
   const animatedMovesRef = useRef<number | null>(null);
 
-  // Get center px coords of a square relative to board wrapper
+  // Get center px coords + square size relative to the board wrapper.
   const getSquareCenter = useCallback((sq: string, filesArr: string[], ranksArr: string[]) => {
     const board = boardRef.current;
     if (!board) return null;
@@ -127,6 +128,7 @@ export const GamePage = () => {
     return {
       x: filesArr.indexOf(sq[0]) * sqW + sqW / 2,
       y: ranksArr.indexOf(sq[1]) * sqH + sqH / 2,
+      size: sqW,
     };
   }, []);
 
@@ -136,7 +138,13 @@ export const GamePage = () => {
     const toCenter   = getSquareCenter(to,   filesArr, ranksArr);
     if (!fromCenter || !toCenter || !piece) return Promise.resolve();
     const durationMs = animMsRef.current;
-    setFlyingPiece({ piece, fromSq: from, toSq: to, fromX: fromCenter.x, fromY: fromCenter.y, toX: toCenter.x, toY: toCenter.y, durationMs });
+    setFlyingPiece({
+      piece, fromSq: from, toSq: to,
+      fromX: fromCenter.x, fromY: fromCenter.y,
+      toX: toCenter.x, toY: toCenter.y,
+      size: fromCenter.size,
+      durationMs,
+    });
     return new Promise<void>((resolve) => setTimeout(() => { setFlyingPiece(null); resolve(); }, durationMs));
   }, [getSquareCenter]);
 
@@ -379,6 +387,8 @@ export const GamePage = () => {
     position: 'absolute',
     left: flyingPiece.fromX,
     top: flyingPiece.fromY,
+    width: flyingPiece.size,
+    height: flyingPiece.size,
     transform: 'translate(-50%, -50%)',
     '--fly-dx': `${flyingPiece.toX - flyingPiece.fromX}px`,
     '--fly-dy': `${flyingPiece.toY - flyingPiece.fromY}px`,
