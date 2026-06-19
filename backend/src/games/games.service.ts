@@ -136,6 +136,17 @@ export class GamesService {
     return this.finishGame(game, chess, GameEndReason.RESIGN);
   }
 
+  async finishOnTimeout(gameId: string, loser: 'white' | 'black'): Promise<Game | null> {
+    const game = await this.gamesRepo.findOne({ where: { id: gameId } });
+    if (!game) return null;
+    if (game.status !== GameStatus.ACTIVE) return game;
+
+    const chess = new Chess(game.currentFen);
+    game.result = loser === 'white' ? GameResult.BLACK_WIN : GameResult.WHITE_WIN;
+    game.endReason = GameEndReason.TIMEOUT;
+    return this.finishGame(game, chess, GameEndReason.TIMEOUT);
+  }
+
   async offerDraw(gameId: string, playerId: string): Promise<Game> {
     const game = await this.gamesRepo.findOne({ where: { id: gameId } });
     if (!game) throw new NotFoundException('Game not found');

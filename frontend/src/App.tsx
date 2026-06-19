@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppLayout } from './components/Layout/AppLayout';
 import { HomePage } from './pages/Home/HomePage';
 import { PlayPage } from './pages/Play/PlayPage';
@@ -39,19 +40,21 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route index element={<HomePage />} />
-        <Route path="play" element={<PlayPage />} />
-        <Route path="game/:id" element={<GamePage />} />
-        <Route path="train" element={<TrainPage />} />
-        <Route path="train/puzzle/:id" element={<PuzzlePage />} />
-        <Route path="rating" element={<RatingPage />} />
-        <Route path="tournaments" element={<TournamentsPage />} />
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <ErrorBoundary>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<HomePage />} />
+          <Route path="play" element={<PlayPage />} />
+          <Route path="game/:id" element={<GamePage />} />
+          <Route path="train" element={<TrainPage />} />
+          <Route path="train/puzzle/:id" element={<PuzzlePage />} />
+          <Route path="rating" element={<RatingPage />} />
+          <Route path="tournaments" element={<TournamentsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </ErrorBoundary>
   );
 }
 

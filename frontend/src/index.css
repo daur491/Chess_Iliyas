@@ -87,6 +87,18 @@ html, body {
   color: var(--red);
 }
 
+.app-error-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent, #4f8ef7);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 button, input { font-family: inherit; }
 
 a {

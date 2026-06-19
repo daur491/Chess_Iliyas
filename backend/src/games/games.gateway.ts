@@ -60,8 +60,35 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     await client.join(`game:${data.gameId}`);
     const { game, moves } = await this.gamesService.getGameWithMoves(data.gameId);
+
+    // Initialize the server-side timer once per active game. This is idempotent:
+    // if a timer already exists in Redis, ensureTimer leaves it untouched.
+    if (game.status === 'active') {
+      await this.ensureTimer(data.gameId, game.timeSeconds * 1000);
+    }
+
     const timerState = await this.timerService.getTimerState(data.gameId);
     client.emit('game_state', { game, moves, timerState });
+  }
+
+  // Starts a persistent timer for the game if one isn't running yet, wiring the
+  // timeout callback to finish the game and broadcast the result.
+  private async ensureTimer(gameId: string, timeMs: number): Promise<void> {
+    const existing = await this.timerService.getTimerState(gameId);
+    if (existing) return;
+
+    await this.timerService.initTimer(
+      gameId,
+      timeMs,
+      async (loser) => {
+        const game = await this.gamesService.finishOnTimeout(gameId, loser);
+        this.server.to(`game:${gameId}`).emit('timeout', { loser });
+        if (game) this.broadcastGameOver(gameId, game);
+      },
+      (whiteMs, blackMs) => {
+        this.server.to(`game:${gameId}`).emit('timer_update', { whiteMs, blackMs });
+      },
+    );
   }
 
   @SubscribeMessage('move')

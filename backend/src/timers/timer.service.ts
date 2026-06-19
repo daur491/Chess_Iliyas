@@ -15,6 +15,7 @@ export class TimerService implements OnModuleDestroy {
   private readonly redis: Redis;
   private intervals = new Map<string, NodeJS.Timeout>();
   private onTimeoutCallbacks = new Map<string, (loser: 'white' | 'black') => void>();
+  private onTickCallbacks = new Map<string, (whiteMs: number, blackMs: number) => void>();
 
   constructor(private readonly configService: ConfigService) {
     const redisUrl = configService.get<string>('REDIS_URL');
@@ -40,6 +41,7 @@ export class TimerService implements OnModuleDestroy {
     gameId: string,
     timeMs: number,
     onTimeout: (loser: 'white' | 'black') => void,
+    onTick?: (whiteMs: number, blackMs: number) => void,
   ): Promise<void> {
     const state: TimerState = {
       whiteMs: timeMs,
@@ -50,6 +52,7 @@ export class TimerService implements OnModuleDestroy {
     };
     await this.redis.set(`game:${gameId}:timer`, JSON.stringify(state));
     this.onTimeoutCallbacks.set(gameId, onTimeout);
+    if (onTick) this.onTickCallbacks.set(gameId, onTick);
     this.startInterval(gameId);
   }
 
@@ -86,6 +89,7 @@ export class TimerService implements OnModuleDestroy {
     }
     await this.redis.del(`game:${gameId}:timer`);
     this.onTimeoutCallbacks.delete(gameId);
+    this.onTickCallbacks.delete(gameId);
   }
 
   private startInterval(gameId: string): void {
@@ -99,6 +103,20 @@ export class TimerService implements OnModuleDestroy {
 
       const now = Date.now();
       const elapsed = now - state.lastMoveAt;
+
+      // Remaining time for each side, accounting for the live elapsed time of
+      // the side currently on the move.
+      const liveWhite =
+        state.currentTurn === 'white'
+          ? Math.max(0, state.whiteMs - elapsed)
+          : state.whiteMs;
+      const liveBlack =
+        state.currentTurn === 'black'
+          ? Math.max(0, state.blackMs - elapsed)
+          : state.blackMs;
+
+      const tickCb = this.onTickCallbacks.get(gameId);
+      if (tickCb) tickCb(liveWhite, liveBlack);
 
       const currentMs =
         state.currentTurn === 'white' ? state.whiteMs : state.blackMs;
