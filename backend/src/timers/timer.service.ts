@@ -42,11 +42,12 @@ export class TimerService implements OnModuleDestroy {
     timeMs: number,
     onTimeout: (loser: 'white' | 'black') => void,
     onTick?: (whiteMs: number, blackMs: number) => void,
+    currentTurn: 'white' | 'black' = 'white',
   ): Promise<void> {
     const state: TimerState = {
       whiteMs: timeMs,
       blackMs: timeMs,
-      currentTurn: 'white',
+      currentTurn,
       lastMoveAt: Date.now(),
       running: true,
     };
@@ -60,6 +61,26 @@ export class TimerService implements OnModuleDestroy {
     const raw = await this.redis.get(`game:${gameId}:timer`);
     if (!raw) return null;
     return JSON.parse(raw) as TimerState;
+  }
+
+  // True if this process currently has a live tick interval for the game.
+  hasInterval(gameId: string): boolean {
+    return this.intervals.has(gameId);
+  }
+
+  // Re-attach the in-memory tick interval + callbacks to an existing Redis timer
+  // (e.g. after a backend restart, where Redis state survives but the interval
+  // and callbacks were lost). Safe to call repeatedly.
+  async resumeTimer(
+    gameId: string,
+    onTimeout: (loser: 'white' | 'black') => void,
+    onTick?: (whiteMs: number, blackMs: number) => void,
+  ): Promise<void> {
+    const state = await this.getTimerState(gameId);
+    if (!state) return;
+    this.onTimeoutCallbacks.set(gameId, onTimeout);
+    if (onTick) this.onTickCallbacks.set(gameId, onTick);
+    if (!this.intervals.has(gameId)) this.startInterval(gameId);
   }
 
   async switchTurn(gameId: string): Promise<void> {
@@ -123,8 +144,9 @@ export class TimerService implements OnModuleDestroy {
 
       if (currentMs - elapsed <= 0) {
         const loser = state.currentTurn;
-        await this.stopTimer(gameId);
+        // Grab the callback BEFORE stopTimer(), which clears the callback maps.
         const cb = this.onTimeoutCallbacks.get(gameId);
+        await this.stopTimer(gameId);
         if (cb) cb(loser);
       }
     }, 1000);

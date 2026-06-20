@@ -73,22 +73,33 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   // Starts a persistent timer for the game if one isn't running yet, wiring the
   // timeout callback to finish the game and broadcast the result.
-  private async ensureTimer(gameId: string, timeMs: number): Promise<void> {
-    const existing = await this.timerService.getTimerState(gameId);
-    if (existing) return;
+  async ensureTimer(gameId: string, timeMs: number): Promise<void> {
+    const onTimeout = async (loser: 'white' | 'black') => {
+      const game = await this.gamesService.finishOnTimeout(gameId, loser);
+      this.server.to(`game:${gameId}`).emit('timeout', { loser });
+      if (game) this.broadcastGameOver(gameId, game);
+    };
+    const onTick = (whiteMs: number, blackMs: number) => {
+      this.server.to(`game:${gameId}`).emit('timer_update', { whiteMs, blackMs });
+    };
 
-    await this.timerService.initTimer(
-      gameId,
-      timeMs,
-      async (loser) => {
-        const game = await this.gamesService.finishOnTimeout(gameId, loser);
-        this.server.to(`game:${gameId}`).emit('timeout', { loser });
-        if (game) this.broadcastGameOver(gameId, game);
-      },
-      (whiteMs, blackMs) => {
-        this.server.to(`game:${gameId}`).emit('timer_update', { whiteMs, blackMs });
-      },
-    );
+    const existing = await this.timerService.getTimerState(gameId);
+    if (existing) {
+      // Redis state survives backend restarts but the in-memory interval and
+      // callbacks don't — re-attach them so timeouts still fire.
+      await this.timerService.resumeTimer(gameId, onTimeout, onTick);
+      return;
+    }
+
+    // Start the clock on the side whose turn it is in the current position
+    // (matters when the bot opened as white before the first join).
+    let currentTurn: 'white' | 'black' = 'white';
+    try {
+      const { game } = await this.gamesService.getGameWithMoves(gameId);
+      currentTurn = game.currentFen.split(' ')[1] === 'b' ? 'black' : 'white';
+    } catch { /* default white */ }
+
+    await this.timerService.initTimer(gameId, timeMs, onTimeout, onTick, currentTurn);
   }
 
   @SubscribeMessage('move')

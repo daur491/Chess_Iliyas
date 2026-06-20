@@ -111,6 +111,10 @@ export class GamesController {
   ) {
     const result = await this.gamesService.makeMove(id, user.id, dto.move);
 
+    // Ensure a server-side timer exists (covers the case where the move arrives
+    // before a socket join initialized it). Idempotent.
+    await this.gamesGateway.ensureTimer(id, result.game.timeSeconds * 1000);
+
     if (!result.game.isVsBot) {
       // PvP: broadcast via WebSocket so opponent sees the move immediately
       await this.timerService.switchTurn(id);
@@ -121,29 +125,39 @@ export class GamesController {
       return result;
     }
 
-    // vs bot and game not over — make bot move immediately
-    if (!result.isGameOver) {
-      const botMove = await this.botService.getBotMove(
-        result.game.currentFen,
-        result.game.botLevel ?? 3,
-      );
-      if (botMove) {
-        try {
-          const botResult = await this.gamesService.makeMove(
-            id,
-            '__bot__',
-            botMove,
-          );
-          return {
-            game: botResult.game,
-            playerMove: result.move,
-            playerFen: result.game.currentFen,
-            botMove: botResult.move,
-            isGameOver: botResult.isGameOver,
-          };
-        } catch {
-          // Bot move failed — return player move result
+    // vs bot: the player just moved, so the clock switches to the bot's side.
+    if (result.isGameOver) {
+      await this.timerService.stopTimer(id);
+      return result;
+    }
+    await this.timerService.switchTurn(id);
+
+    // Make the bot move immediately, then switch the clock back to the player.
+    const botMove = await this.botService.getBotMove(
+      result.game.currentFen,
+      result.game.botLevel ?? 3,
+    );
+    if (botMove) {
+      try {
+        const botResult = await this.gamesService.makeMove(
+          id,
+          '__bot__',
+          botMove,
+        );
+        if (botResult.isGameOver) {
+          await this.timerService.stopTimer(id);
+        } else {
+          await this.timerService.switchTurn(id);
         }
+        return {
+          game: botResult.game,
+          playerMove: result.move,
+          playerFen: result.game.currentFen,
+          botMove: botResult.move,
+          isGameOver: botResult.isGameOver,
+        };
+      } catch {
+        // Bot move failed — return player move result
       }
     }
 
