@@ -102,7 +102,7 @@ export const GamePage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { game, moves, timerState, isGameOver, setGame, setMoves, setGameOver, reset } = useGameStore();
+  const { game, moves, timerState, isGameOver, setGame, updateFen, setMoves, setGameOver, reset } = useGameStore();
   const { offerDraw, acceptDraw, sendMove: _sendMove, resign: _resign, drawOfferedBy } = useGameSocket(id);
   const [selected, setSelected] = useState<string | null>(null);
   const [legalTargets, setLegalTargets] = useState<string[]>([]);
@@ -133,10 +133,13 @@ export const GamePage = () => {
   }, []);
 
   // Start a flying piece animation from->to. Resolves when the slide finishes.
-  const animatePiece = useCallback((piece: string, from: string, to: string, filesArr: string[], ranksArr: string[]) => {
+  // `onArrive` runs synchronously at the very end, in the SAME tick that clears
+  // the overlay — use it to commit the new board position so the piece never
+  // flashes back to its origin square between animation end and state update.
+  const animatePiece = useCallback((piece: string, from: string, to: string, filesArr: string[], ranksArr: string[], onArrive?: () => void) => {
     const fromCenter = getSquareCenter(from, filesArr, ranksArr);
     const toCenter   = getSquareCenter(to,   filesArr, ranksArr);
-    if (!fromCenter || !toCenter || !piece) return Promise.resolve();
+    if (!fromCenter || !toCenter || !piece) { onArrive?.(); return Promise.resolve(); }
     const durationMs = animMsRef.current;
     setFlyingPiece({
       piece, fromSq: from, toSq: to,
@@ -145,7 +148,13 @@ export const GamePage = () => {
       size: fromCenter.size,
       durationMs,
     });
-    return new Promise<void>((resolve) => setTimeout(() => { setFlyingPiece(null); resolve(); }, durationMs));
+    return new Promise<void>((resolve) =>
+      setTimeout(() => {
+        onArrive?.();
+        setFlyingPiece(null);
+        resolve();
+      }, durationMs),
+    );
   }, [getSquareCenter]);
 
   useEffect(() => {
@@ -262,9 +271,24 @@ export const GamePage = () => {
     setSelected(null);
     setLegalTargets([]);
 
-    // Animate player's piece immediately
+    // Optimistically compute the resulting position locally so we can commit it
+    // the instant the slide ends (no flash back to the origin square).
+    let optimisticFen: string | null = null;
+    try {
+      const probe = new Chess(game?.currentFen ?? chessRef.current.fen());
+      probe.move({ from, to, promotion: (promotion || 'q') as any });
+      optimisticFen = probe.fen();
+    } catch { optimisticFen = null; }
+
+    // Animate player's piece, then commit the optimistic position on arrival.
     const playerPiece = positionSnapshot[from];
-    await animatePiece(playerPiece, from, to, filesArr, ranksArr);
+    await animatePiece(playerPiece, from, to, filesArr, ranksArr, () => {
+      if (optimisticFen) {
+        updateFen(optimisticFen);
+        try { chessRef.current = new Chess(optimisticFen); } catch {}
+        setLastMove({ from, to });
+      }
+    });
 
     try {
       const result = await gamesApi.makeMove(id, from + to + promotion);
@@ -279,14 +303,21 @@ export const GamePage = () => {
         const intermediatePos = parseFen(playerFen);
         const botPiece = intermediatePos[botFrom] ?? '';
 
-        // Show board after player move, then animate bot
+        // Show board after player move, then animate bot. Commit the final
+        // position on the bot's arrival so it doesn't flash back either.
         setGame({ ...result.game, currentFen: playerFen });
         try { chessRef.current = new Chess(playerFen); } catch {}
 
-        await animatePiece(botPiece, botFrom, botTo, filesArr, ranksArr);
+        await animatePiece(botPiece, botFrom, botTo, filesArr, ranksArr, () => {
+          setGame(result.game);
+          if (result.isGameOver) setGameOver(true);
+          try { chessRef.current = new Chess(result.game.currentFen); } catch {}
+          setLastMove({ from: botFrom, to: botTo });
+        });
+        return;
       }
 
-      // Apply final state — polling will sync moves automatically
+      // No bot move: apply final state — polling will sync moves automatically
       setGame(result.game);
       if (result.isGameOver) setGameOver(true);
       try { chessRef.current = new Chess(result.game.currentFen); } catch {}
@@ -295,7 +326,7 @@ export const GamePage = () => {
     } finally {
       setMoving(false);
     }
-  }, [id, moving, animatePiece]);
+  }, [id, moving, animatePiece, game?.currentFen, updateFen, setGame, setGameOver]);
 
   const handleResign = useCallback(async () => {
     if (!id) return;
