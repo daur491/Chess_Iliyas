@@ -11,7 +11,7 @@ import './GamePage.css';
 
 // SVG chess pieces — Cburnett style (Lichess open source)
 // White pieces: white fill + black stroke; Black pieces: black fill + white/grey details
-const PieceSvg = ({ code }: { code: string }) => {
+const PieceSvg = ({ code, style }: { code: string; style?: CSSProperties }) => {
   const isW = code[0] === 'w';
   const type = code[1]; // K Q R B N P
 
@@ -34,7 +34,7 @@ const PieceSvg = ({ code }: { code: string }) => {
   };
 
   return (
-    <svg viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg" className="piece-svg">
+    <svg viewBox="0 0 45 45" xmlns="http://www.w3.org/2000/svg" className="piece-svg" style={style}>
       <path
         d={paths[type] ?? paths.P}
         fill={fill}
@@ -490,10 +490,16 @@ export const GamePage = () => {
             })
           )}
 
-          {/* Flying piece overlay */}
+          {/* Flying piece overlay. The inner SVG gets an explicit pixel size
+              (square minus the 4% padding on each side); percentage sizing on an
+              SVG inside an absolutely-positioned box is unreliable and collapses
+              it to its intrinsic ~42px ("shrinks to a dot"). */}
           {flyingPiece && (
             <span className="game__piece game__piece--flying" style={flyingStyle}>
-              <PieceSvg code={flyingPiece.piece} />
+              <PieceSvg
+                code={flyingPiece.piece}
+                style={{ width: flyingPiece.size * 0.92, height: flyingPiece.size * 0.92 }}
+              />
             </span>
           )}
         </div>
