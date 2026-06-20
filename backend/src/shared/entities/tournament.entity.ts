@@ -27,13 +27,21 @@ export class Tournament {
   @Column()
   name: string;
 
-  @Column({ type: 'enum', enum: TournamentFormat, default: TournamentFormat.SWISS })
+  @Column({
+    type: 'enum',
+    enum: TournamentFormat,
+    default: TournamentFormat.SWISS,
+  })
   format: TournamentFormat;
 
   @Column({ type: 'enum', enum: TimeControl })
   timeControl: TimeControl;
 
-  @Column({ type: 'enum', enum: TournamentStatus, default: TournamentStatus.UPCOMING })
+  @Column({
+    type: 'enum',
+    enum: TournamentStatus,
+    default: TournamentStatus.UPCOMING,
+  })
   status: TournamentStatus;
 
   @Column({ default: 64 })

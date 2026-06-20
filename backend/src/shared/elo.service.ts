@@ -14,7 +14,12 @@ export class EloService {
     result: 'white' | 'black' | 'draw',
     whiteGames: number,
     blackGames: number,
-  ): { whiteNew: number; blackNew: number; whiteChange: number; blackChange: number } {
+  ): {
+    whiteNew: number;
+    blackNew: number;
+    whiteChange: number;
+    blackChange: number;
+  } {
     const expectedWhite = 1 / (1 + Math.pow(10, (blackElo - whiteElo) / 400));
     const expectedBlack = 1 - expectedWhite;
 

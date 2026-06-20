@@ -36,7 +36,11 @@ export class Puzzle {
   @Column({ type: 'enum', enum: PuzzleCategory })
   category: PuzzleCategory;
 
-  @Column({ type: 'enum', enum: PuzzleDifficulty, default: PuzzleDifficulty.MEDIUM })
+  @Column({
+    type: 'enum',
+    enum: PuzzleDifficulty,
+    default: PuzzleDifficulty.MEDIUM,
+  })
   difficulty: PuzzleDifficulty;
 
   @Column()

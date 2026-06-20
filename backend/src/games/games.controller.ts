@@ -47,7 +47,9 @@ export class GamesController {
   ) {
     const color =
       dto.color === 'random'
-        ? Math.random() > 0.5 ? 'white' : 'black'
+        ? Math.random() > 0.5
+          ? 'white'
+          : 'black'
         : (dto.color ?? 'white');
 
     // Close any lingering active games so the user has at most one ongoing game.
@@ -70,8 +72,12 @@ export class GamesController {
       if (botMove) {
         try {
           await this.gamesService.makeMove(game.id, '__bot__', botMove);
-          return this.gamesService.getGameWithMoves(game.id).then(r => r.game);
-        } catch { /* return game as-is on error */ }
+          return this.gamesService
+            .getGameWithMoves(game.id)
+            .then((r) => r.game);
+        } catch {
+          /* return game as-is on error */
+        }
       }
     }
 
@@ -118,7 +124,12 @@ export class GamesController {
     if (!result.game.isVsBot) {
       // PvP: broadcast via WebSocket so opponent sees the move immediately
       await this.timerService.switchTurn(id);
-      this.gamesGateway.broadcastMoveMade(id, result.move, result.game, result.isGameOver);
+      this.gamesGateway.broadcastMoveMade(
+        id,
+        result.move,
+        result.game,
+        result.isGameOver,
+      );
       if (result.isGameOver) {
         await this.timerService.stopTimer(id);
       }

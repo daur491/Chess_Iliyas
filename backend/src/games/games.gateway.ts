@@ -59,7 +59,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { gameId: string },
   ) {
     await client.join(`game:${data.gameId}`);
-    const { game, moves } = await this.gamesService.getGameWithMoves(data.gameId);
+    const { game, moves } = await this.gamesService.getGameWithMoves(
+      data.gameId,
+    );
 
     // Initialize the server-side timer once per active game. This is idempotent:
     // if a timer already exists in Redis, ensureTimer leaves it untouched.
@@ -80,7 +82,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (game) this.broadcastGameOver(gameId, game);
     };
     const onTick = (whiteMs: number, blackMs: number) => {
-      this.server.to(`game:${gameId}`).emit('timer_update', { whiteMs, blackMs });
+      this.server
+        .to(`game:${gameId}`)
+        .emit('timer_update', { whiteMs, blackMs });
     };
 
     const existing = await this.timerService.getTimerState(gameId);
@@ -97,9 +101,17 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const { game } = await this.gamesService.getGameWithMoves(gameId);
       currentTurn = game.currentFen.split(' ')[1] === 'b' ? 'black' : 'white';
-    } catch { /* default white */ }
+    } catch {
+      /* default white */
+    }
 
-    await this.timerService.initTimer(gameId, timeMs, onTimeout, onTick, currentTurn);
+    await this.timerService.initTimer(
+      gameId,
+      timeMs,
+      onTimeout,
+      onTick,
+      currentTurn,
+    );
   }
 
   @SubscribeMessage('move')
@@ -138,9 +150,17 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
           game.botLevel ?? 3,
         );
         if (botMove) {
-          const botUserId = game.whiteId === userId ? game.blackId : game.whiteId;
-          const { game: gameAfterBot, move: botMoveObj, isGameOver: botGameOver } =
-            await this.gamesService.makeMove(data.gameId, botUserId ?? 'bot', botMove);
+          const botUserId =
+            game.whiteId === userId ? game.blackId : game.whiteId;
+          const {
+            game: gameAfterBot,
+            move: botMoveObj,
+            isGameOver: botGameOver,
+          } = await this.gamesService.makeMove(
+            data.gameId,
+            botUserId ?? 'bot',
+            botMove,
+          );
 
           await this.timerService.switchTurn(data.gameId);
 

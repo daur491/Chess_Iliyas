@@ -14,13 +14,21 @@ interface TimerState {
 export class TimerService implements OnModuleDestroy {
   private readonly redis: Redis;
   private intervals = new Map<string, NodeJS.Timeout>();
-  private onTimeoutCallbacks = new Map<string, (loser: 'white' | 'black') => void>();
-  private onTickCallbacks = new Map<string, (whiteMs: number, blackMs: number) => void>();
+  private onTimeoutCallbacks = new Map<
+    string,
+    (loser: 'white' | 'black') => void
+  >();
+  private onTickCallbacks = new Map<
+    string,
+    (whiteMs: number, blackMs: number) => void
+  >();
 
   constructor(private readonly configService: ConfigService) {
     const redisUrl = configService.get<string>('REDIS_URL');
     if (redisUrl) {
-      const tlsOpts = redisUrl.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {};
+      const tlsOpts = redisUrl.startsWith('rediss://')
+        ? { tls: { rejectUnauthorized: false } }
+        : {};
       this.redis = new Redis(redisUrl, tlsOpts);
     } else {
       this.redis = new Redis({
@@ -73,12 +81,14 @@ export class TimerService implements OnModuleDestroy {
     const elapsed = Date.now() - state.lastMoveAt;
     return {
       ...state,
-      whiteMs: state.currentTurn === 'white'
-        ? Math.max(0, state.whiteMs - elapsed)
-        : state.whiteMs,
-      blackMs: state.currentTurn === 'black'
-        ? Math.max(0, state.blackMs - elapsed)
-        : state.blackMs,
+      whiteMs:
+        state.currentTurn === 'white'
+          ? Math.max(0, state.whiteMs - elapsed)
+          : state.whiteMs,
+      blackMs:
+        state.currentTurn === 'black'
+          ? Math.max(0, state.blackMs - elapsed)
+          : state.blackMs,
     };
   }
 

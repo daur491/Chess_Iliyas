@@ -6,18 +6,42 @@ import * as fs from 'fs';
 
 interface BotConfig {
   depth: number;
-  skillLevel: number;  // Stockfish Skill Level 0-20
-  uciElo: number;      // Stockfish UCI_Elo (1320-3190)
+  skillLevel: number; // Stockfish Skill Level 0-20
+  uciElo: number; // Stockfish UCI_Elo (1320-3190)
   limitStrength: boolean;
-  movetime?: number;   // max ms per move (дополнительное ограничение для слабых уровней)
+  movetime?: number; // max ms per move (дополнительное ограничение для слабых уровней)
 }
 
 const BOT_CONFIG: Record<number, BotConfig> = {
-  1: { depth: 1,  skillLevel: 0,  uciElo: 800,  limitStrength: true,  movetime: 100  },
-  2: { depth: 3,  skillLevel: 5,  uciElo: 1100, limitStrength: true,  movetime: 300  },
-  3: { depth: 6,  skillLevel: 10, uciElo: 1500, limitStrength: true,  movetime: 1000 },
-  4: { depth: 10, skillLevel: 16, uciElo: 1800, limitStrength: true,  movetime: 2000 },
-  5: { depth: 18, skillLevel: 20, uciElo: 2200, limitStrength: false               },
+  1: {
+    depth: 1,
+    skillLevel: 0,
+    uciElo: 800,
+    limitStrength: true,
+    movetime: 100,
+  },
+  2: {
+    depth: 3,
+    skillLevel: 5,
+    uciElo: 1100,
+    limitStrength: true,
+    movetime: 300,
+  },
+  3: {
+    depth: 6,
+    skillLevel: 10,
+    uciElo: 1500,
+    limitStrength: true,
+    movetime: 1000,
+  },
+  4: {
+    depth: 10,
+    skillLevel: 16,
+    uciElo: 1800,
+    limitStrength: true,
+    movetime: 2000,
+  },
+  5: { depth: 18, skillLevel: 20, uciElo: 2200, limitStrength: false },
 };
 
 @Injectable()
@@ -81,18 +105,26 @@ export class BotService implements OnModuleDestroy {
 
       // Настраиваем Stockfish через UCI перед отправкой позиции
       sfProcess.stdin?.write('uci\n');
-      sfProcess.stdin?.write(`setoption name Skill Level value ${config.skillLevel}\n`);
+      sfProcess.stdin?.write(
+        `setoption name Skill Level value ${config.skillLevel}\n`,
+      );
       if (config.limitStrength) {
         sfProcess.stdin?.write('setoption name UCI_LimitStrength value true\n');
-        sfProcess.stdin?.write(`setoption name UCI_Elo value ${config.uciElo}\n`);
+        sfProcess.stdin?.write(
+          `setoption name UCI_Elo value ${config.uciElo}\n`,
+        );
       } else {
-        sfProcess.stdin?.write('setoption name UCI_LimitStrength value false\n');
+        sfProcess.stdin?.write(
+          'setoption name UCI_LimitStrength value false\n',
+        );
       }
       sfProcess.stdin?.write('isready\n');
       sfProcess.stdin?.write(`position fen ${fen}\n`);
 
       if (config.movetime) {
-        sfProcess.stdin?.write(`go depth ${config.depth} movetime ${config.movetime}\n`);
+        sfProcess.stdin?.write(
+          `go depth ${config.depth} movetime ${config.movetime}\n`,
+        );
       } else {
         sfProcess.stdin?.write(`go depth ${config.depth}\n`);
       }
@@ -111,7 +143,11 @@ export class BotService implements OnModuleDestroy {
       const sfProcess = spawn(this.stockfishPath);
       let resolved = false;
 
-      const safeResolve = (val: { score: number; bestMove: string; lines: string[] }) => {
+      const safeResolve = (val: {
+        score: number;
+        bestMove: string;
+        lines: string[];
+      }) => {
         if (!resolved) {
           resolved = true;
           resolve(val);

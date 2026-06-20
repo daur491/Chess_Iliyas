@@ -1,5 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { execSync } from 'child_process';
+import { resolve } from 'path';
+import { existsSync } from 'fs';
 
 @Controller('health')
 export class HealthController {
@@ -10,13 +12,11 @@ export class HealthController {
 
   @Get('stockfish')
   checkStockfish() {
-    const { resolve } = require('path');
-    const { existsSync } = require('fs');
-
     const configured = process.env.STOCKFISH_PATH ?? 'stockfish';
-    const resolved = configured.startsWith('./') || configured.startsWith('../')
-      ? resolve(process.cwd(), configured)
-      : configured;
+    const resolved =
+      configured.startsWith('./') || configured.startsWith('../')
+        ? resolve(process.cwd(), configured)
+        : configured;
 
     const checkPaths = [
       resolved,
@@ -33,10 +33,21 @@ export class HealthController {
     let version = 'unavailable';
     try {
       version = execSync(`"${resolved}" <<< "quit" 2>/dev/null | head -1`, {
-        timeout: 2000, shell: '/bin/bash',
-      }).toString().trim();
-    } catch { /* ignore */ }
+        timeout: 2000,
+        shell: '/bin/bash',
+      })
+        .toString()
+        .trim();
+    } catch {
+      /* ignore */
+    }
 
-    return { configured, resolved, paths: results, version, cwd: process.cwd() };
+    return {
+      configured,
+      resolved,
+      paths: results,
+      version,
+      cwd: process.cwd(),
+    };
   }
 }

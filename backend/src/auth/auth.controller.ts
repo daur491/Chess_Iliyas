@@ -1,4 +1,10 @@
-import { Controller, Post, Body, Get, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { IsString, IsNotEmpty } from 'class-validator';
 

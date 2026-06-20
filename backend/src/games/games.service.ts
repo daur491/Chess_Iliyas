@@ -1,9 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Chess } from 'chess.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Game, GameStatus, GameResult, GameEndReason, TimeControl } from '../shared/entities/game.entity';
+import {
+  Game,
+  GameStatus,
+  GameResult,
+  GameEndReason,
+  TimeControl,
+} from '../shared/entities/game.entity';
 import { Move } from '../shared/entities/move.entity';
 import { EloService } from '../shared/elo.service';
 import { UsersService } from '../users/users.service';
@@ -43,7 +53,11 @@ export class GamesService {
     return this.gamesRepo.save(game);
   }
 
-  async makeMove(gameId: string, playerId: string, moveSan: string): Promise<{
+  async makeMove(
+    gameId: string,
+    playerId: string,
+    moveSan: string,
+  ): Promise<{
     game: Game;
     move: Move;
     isGameOver: boolean;
@@ -95,9 +109,14 @@ export class GamesService {
     return { game, move, isGameOver };
   }
 
-  async finishGame(game: Game, chess: Chess, reason?: GameEndReason): Promise<Game> {
+  async finishGame(
+    game: Game,
+    chess: Chess,
+    reason?: GameEndReason,
+  ): Promise<Game> {
     if (chess.isCheckmate()) {
-      game.result = chess.turn() === 'w' ? GameResult.BLACK_WIN : GameResult.WHITE_WIN;
+      game.result =
+        chess.turn() === 'w' ? GameResult.BLACK_WIN : GameResult.WHITE_WIN;
       game.endReason = GameEndReason.CHECKMATE;
     } else if (chess.isStalemate()) {
       game.result = GameResult.DRAW;
@@ -130,19 +149,24 @@ export class GamesService {
     if (!game) throw new NotFoundException('Game not found');
 
     const chess = new Chess(game.currentFen);
-    game.result = playerId === game.whiteId ? GameResult.BLACK_WIN : GameResult.WHITE_WIN;
+    game.result =
+      playerId === game.whiteId ? GameResult.BLACK_WIN : GameResult.WHITE_WIN;
     game.endReason = GameEndReason.RESIGN;
 
     return this.finishGame(game, chess, GameEndReason.RESIGN);
   }
 
-  async finishOnTimeout(gameId: string, loser: 'white' | 'black'): Promise<Game | null> {
+  async finishOnTimeout(
+    gameId: string,
+    loser: 'white' | 'black',
+  ): Promise<Game | null> {
     const game = await this.gamesRepo.findOne({ where: { id: gameId } });
     if (!game) return null;
     if (game.status !== GameStatus.ACTIVE) return game;
 
     const chess = new Chess(game.currentFen);
-    game.result = loser === 'white' ? GameResult.BLACK_WIN : GameResult.WHITE_WIN;
+    game.result =
+      loser === 'white' ? GameResult.BLACK_WIN : GameResult.WHITE_WIN;
     game.endReason = GameEndReason.TIMEOUT;
     return this.finishGame(game, chess, GameEndReason.TIMEOUT);
   }
@@ -185,7 +209,11 @@ export class GamesService {
       .getMany();
   }
 
-  async getGameHistory(userId: string, page = 1, limit = 20): Promise<[Game[], number]> {
+  async getGameHistory(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<[Game[], number]> {
     return this.gamesRepo
       .createQueryBuilder('g')
       .leftJoinAndSelect('g.white', 'white')
@@ -198,7 +226,9 @@ export class GamesService {
       .getManyAndCount();
   }
 
-  async getGameWithMoves(gameId: string): Promise<{ game: Game; moves: Move[] }> {
+  async getGameWithMoves(
+    gameId: string,
+  ): Promise<{ game: Game; moves: Move[] }> {
     const game = await this.gamesRepo.findOne({
       where: { id: gameId },
       relations: { white: true, black: true },
@@ -212,8 +242,8 @@ export class GamesService {
   }
 
   private async applyEloChanges(game: Game): Promise<void> {
-    const white = await this.usersService.findById(game.whiteId!);
-    const black = await this.usersService.findById(game.blackId!);
+    const white = await this.usersService.findById(game.whiteId);
+    const black = await this.usersService.findById(game.blackId);
     if (!white || !black) return;
 
     const resultStr =
@@ -223,33 +253,52 @@ export class GamesService {
           ? 'black'
           : 'draw';
 
-    const { whiteNew, blackNew, whiteChange, blackChange } = this.eloService.calculate(
-      white.elo,
-      black.elo,
-      resultStr,
-      white.gamesPlayed,
-      black.gamesPlayed,
-    );
+    const { whiteNew, blackNew, whiteChange, blackChange } =
+      this.eloService.calculate(
+        white.elo,
+        black.elo,
+        resultStr,
+        white.gamesPlayed,
+        black.gamesPlayed,
+      );
 
     game.whiteEloChange = whiteChange;
     game.blackEloChange = blackChange;
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.update('users', { id: white.id }, {
-        elo: whiteNew,
-        bestElo: Math.max(whiteNew, white.bestElo),
-      });
-      await manager.update('users', { id: black.id }, {
-        elo: blackNew,
-        bestElo: Math.max(blackNew, black.bestElo),
-      });
+      await manager.update(
+        'users',
+        { id: white.id },
+        {
+          elo: whiteNew,
+          bestElo: Math.max(whiteNew, white.bestElo),
+        },
+      );
+      await manager.update(
+        'users',
+        { id: black.id },
+        {
+          elo: blackNew,
+          bestElo: Math.max(blackNew, black.bestElo),
+        },
+      );
     });
 
     await this.ratingService.updateLeaderboard(white.id, whiteNew);
     await this.ratingService.updateLeaderboard(black.id, blackNew);
 
-    const whiteResult = game.result === GameResult.WHITE_WIN ? 'win' : game.result === GameResult.BLACK_WIN ? 'loss' : 'draw';
-    const blackResult = game.result === GameResult.BLACK_WIN ? 'win' : game.result === GameResult.WHITE_WIN ? 'loss' : 'draw';
+    const whiteResult =
+      game.result === GameResult.WHITE_WIN
+        ? 'win'
+        : game.result === GameResult.BLACK_WIN
+          ? 'loss'
+          : 'draw';
+    const blackResult =
+      game.result === GameResult.BLACK_WIN
+        ? 'win'
+        : game.result === GameResult.WHITE_WIN
+          ? 'loss'
+          : 'draw';
     await this.usersService.incrementGameStats(white.id, whiteResult);
     await this.usersService.incrementGameStats(black.id, blackResult);
   }

@@ -19,7 +19,9 @@ export class RatingService implements OnModuleDestroy {
   ) {
     const redisUrl = configService.get<string>('REDIS_URL');
     if (redisUrl) {
-      const tlsOpts = redisUrl.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {};
+      const tlsOpts = redisUrl.startsWith('rediss://')
+        ? { tls: { rejectUnauthorized: false } }
+        : {};
       this.redis = new Redis(redisUrl, tlsOpts);
     } else {
       this.redis = new Redis({
@@ -68,7 +70,12 @@ export class RatingService implements OnModuleDestroy {
   async getPuzzleLeaderboard(
     currentUserId: string,
   ): Promise<{ top10: any[]; myPosition: number | null }> {
-    const top10Ids = await this.redis.zrevrange(PUZZLES_KEY, 0, 9, 'WITHSCORES');
+    const top10Ids = await this.redis.zrevrange(
+      PUZZLES_KEY,
+      0,
+      9,
+      'WITHSCORES',
+    );
     const top10 = await this.buildLeaderboardEntries(top10Ids, 1, true);
 
     const rank = await this.redis.zrevrank(PUZZLES_KEY, currentUserId);
@@ -90,7 +97,7 @@ export class RatingService implements OnModuleDestroy {
   private async buildLeaderboardEntries(
     idScores: string[],
     startRank: number,
-    isPuzzle = false,
+    _isPuzzle = false,
   ): Promise<Record<string, unknown>[]> {
     const result: Record<string, unknown>[] = [];
     for (let i = 0; i < idScores.length; i += 2) {

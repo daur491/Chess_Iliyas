@@ -9,13 +9,24 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsString, IsInt, IsEnum, IsArray, IsOptional, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  IsEnum,
+  IsArray,
+  IsOptional,
+  Min,
+  Max,
+} from 'class-validator';
 import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
 import { AdminGuard } from '../shared/guards/admin.guard';
 import { UsersService } from '../users/users.service';
 import { PuzzlesService } from '../puzzles/puzzles.service';
 import { TournamentsService } from '../tournaments/tournaments.service';
-import { PuzzleCategory, PuzzleDifficulty } from '../shared/entities/puzzle.entity';
+import {
+  PuzzleCategory,
+  PuzzleDifficulty,
+} from '../shared/entities/puzzle.entity';
 import { TournamentStatus } from '../shared/entities/tournament.entity';
 import { TimeControl } from '../shared/entities/game.entity';
 
@@ -100,7 +111,7 @@ export class AdminController {
 
   @Put('puzzles/:id')
   updatePuzzle(@Param('id') id: string, @Body() dto: Partial<CreatePuzzleDto>) {
-    return this.puzzlesService.updatePuzzle(id, dto as any);
+    return this.puzzlesService.updatePuzzle(id, dto);
   }
 
   @Delete('puzzles/:id')

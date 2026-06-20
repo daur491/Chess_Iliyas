@@ -7,12 +7,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsArray, IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsArray, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../shared/decorators/current-user.decorator';
 import { User } from '../shared/entities/user.entity';
 import { PuzzlesService } from './puzzles.service';
-import { PuzzleCategory, PuzzleDifficulty } from '../shared/entities/puzzle.entity';
+import {
+  PuzzleCategory,
+  PuzzleDifficulty,
+} from '../shared/entities/puzzle.entity';
 
 class SubmitAttemptDto {
   @IsArray()
