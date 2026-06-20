@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
-  OneToMany,
 } from 'typeorm';
 import { User } from './user.entity';
 
@@ -90,7 +89,9 @@ export class Game {
   @Column({ nullable: true, type: 'text' })
   pgn: string;
 
-  @Column({ default: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' })
+  @Column({
+    default: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+  })
   currentFen: string;
 
   @Column({ default: 0 })

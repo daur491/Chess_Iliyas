@@ -5,7 +5,11 @@ import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import Redis from 'ioredis';
-import { Puzzle, PuzzleCategory, PuzzleDifficulty } from '../shared/entities/puzzle.entity';
+import {
+  Puzzle,
+  PuzzleCategory,
+  PuzzleDifficulty,
+} from '../shared/entities/puzzle.entity';
 import { PuzzleAttempt } from '../shared/entities/puzzle-attempt.entity';
 import { UsersService } from '../users/users.service';
 import { RatingService } from '../rating/rating.service';
@@ -28,7 +32,9 @@ export class PuzzlesService {
   ) {
     const redisUrl = configService.get<string>('REDIS_URL');
     if (redisUrl) {
-      const tlsOpts = redisUrl.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {};
+      const tlsOpts = redisUrl.startsWith('rediss://')
+        ? { tls: { rejectUnauthorized: false } }
+        : {};
       this.redis = new Redis(redisUrl, tlsOpts);
     } else {
       this.redis = new Redis({
@@ -101,7 +107,11 @@ export class PuzzlesService {
     });
 
     if (!attempt) {
-      attempt = this.attemptsRepo.create({ userId, puzzleId, attemptsCount: 0 });
+      attempt = this.attemptsRepo.create({
+        userId,
+        puzzleId,
+        attemptsCount: 0,
+      });
     }
 
     if (attempt.solved) {
@@ -124,7 +134,10 @@ export class PuzzlesService {
 
       const user = await this.usersService.findById(userId);
       if (user) {
-        await this.ratingService.updatePuzzleLeaderboard(userId, user.puzzlesSolved);
+        await this.ratingService.updatePuzzleLeaderboard(
+          userId,
+          user.puzzlesSolved,
+        );
         this.eventEmitter.emit('puzzle.solved', {
           userId,
           totalSolved: user.puzzlesSolved,
@@ -159,9 +172,15 @@ export class PuzzlesService {
     const puzzle = await this.puzzlesRepo.findOne({ where: { id: puzzleId } });
     if (!puzzle) throw new NotFoundException('Puzzle not found');
 
-    let attempt = await this.attemptsRepo.findOne({ where: { userId, puzzleId } });
+    let attempt = await this.attemptsRepo.findOne({
+      where: { userId, puzzleId },
+    });
     if (!attempt) {
-      attempt = this.attemptsRepo.create({ userId, puzzleId, solutionShown: true });
+      attempt = this.attemptsRepo.create({
+        userId,
+        puzzleId,
+        solutionShown: true,
+      });
     } else {
       attempt.solutionShown = true;
     }

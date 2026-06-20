@@ -7,7 +7,6 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Game } from './game.entity';
-import { User } from './user.entity';
 
 @Entity('moves')
 export class Move {

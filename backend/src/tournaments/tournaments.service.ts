@@ -42,7 +42,10 @@ export class TournamentsService {
     return t;
   }
 
-  async join(tournamentId: string, userId: string): Promise<TournamentParticipant> {
+  async join(
+    tournamentId: string,
+    userId: string,
+  ): Promise<TournamentParticipant> {
     const tournament = await this.getOne(tournamentId);
 
     if (tournament.status !== TournamentStatus.REGISTRATION) {
@@ -93,7 +96,10 @@ export class TournamentsService {
     return this.tournamentsRepo.save(tournament);
   }
 
-  async updateStatus(id: string, status: TournamentStatus): Promise<Tournament> {
+  async updateStatus(
+    id: string,
+    status: TournamentStatus,
+  ): Promise<Tournament> {
     const tournament = await this.getOne(id);
     tournament.status = status;
     if (status === TournamentStatus.ACTIVE) {
@@ -105,14 +111,19 @@ export class TournamentsService {
     return this.tournamentsRepo.save(tournament);
   }
 
-  private async updateRanksAndNotifyWinner(tournamentId: string): Promise<void> {
+  private async updateRanksAndNotifyWinner(
+    tournamentId: string,
+  ): Promise<void> {
     const standings = await this.getStandings(tournamentId);
     for (let i = 0; i < standings.length; i++) {
       standings[i].rank = i + 1;
       await this.participantsRepo.save(standings[i]);
     }
     if (standings.length > 0) {
-      this.eventEmitter.emit('tournament.won', { userId: standings[0].userId, tournamentId });
+      this.eventEmitter.emit('tournament.won', {
+        userId: standings[0].userId,
+        tournamentId,
+      });
     }
   }
 }

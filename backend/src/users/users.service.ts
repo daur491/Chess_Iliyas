@@ -54,7 +54,7 @@ export class UsersService {
   async updateElo(
     id: string,
     newElo: number,
-    eloChange: number,
+    _eloChange: number,
   ): Promise<void> {
     const user = await this.findById(id);
     if (!user) return;
@@ -67,7 +67,6 @@ export class UsersService {
     id: string,
     result: 'win' | 'loss' | 'draw',
   ): Promise<void> {
-    const update: Partial<User> = { gamesPlayed: undefined };
     await this.usersRepo.increment({ id }, 'gamesPlayed', 1);
     if (result === 'win') await this.usersRepo.increment({ id }, 'wins', 1);
     else if (result === 'loss')

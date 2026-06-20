@@ -40,7 +40,16 @@ export const useTelegramAuth = () => {
           }
         }
 
+        const devAuth = import.meta.env.VITE_DEV_AUTH === 'true';
         const tg = await waitForTelegram();
+        const initData = tg?.initData;
+
+        // Local/browser dev: skip Telegram and log in as a dev user.
+        if (devAuth && !initData) {
+          const { accessToken, user } = await authApi.devLogin();
+          setAuth(user, accessToken);
+          return;
+        }
 
         if (!tg) {
           throw new Error('Not running in Telegram');
@@ -48,8 +57,6 @@ export const useTelegramAuth = () => {
 
         tg.ready();
         tg.expand();
-
-        const initData = tg.initData;
 
         if (!initData) {
           throw new Error('Telegram initData is empty. Please open via Telegram bot.');

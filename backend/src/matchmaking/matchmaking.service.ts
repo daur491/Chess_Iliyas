@@ -31,7 +31,9 @@ export class MatchmakingService implements OnModuleDestroy {
   ) {
     const redisUrl = configService.get<string>('REDIS_URL');
     if (redisUrl) {
-      const tlsOpts = redisUrl.startsWith('rediss://') ? { tls: { rejectUnauthorized: false } } : {};
+      const tlsOpts = redisUrl.startsWith('rediss://')
+        ? { tls: { rejectUnauthorized: false } }
+        : {};
       this.redis = new Redis(redisUrl, tlsOpts);
     } else {
       this.redis = new Redis({
@@ -39,10 +41,7 @@ export class MatchmakingService implements OnModuleDestroy {
         port: configService.get<number>('REDIS_PORT', 6379),
       });
     }
-    this.matchmakingInterval = setInterval(
-      () => this.processQueues(),
-      2000,
-    );
+    this.matchmakingInterval = setInterval(() => this.processQueues(), 2000);
   }
 
   onModuleDestroy() {
@@ -50,9 +49,7 @@ export class MatchmakingService implements OnModuleDestroy {
     this.redis.quit();
   }
 
-  setOnMatchFound(
-    cb: (white: string, black: string, gameId: string) => void,
-  ) {
+  setOnMatchFound(cb: (white: string, black: string, gameId: string) => void) {
     this.onMatchFoundCallback = cb;
   }
 
@@ -163,7 +160,11 @@ export class MatchmakingService implements OnModuleDestroy {
     const whiteId = isWhiteA ? a.entry.userId : b.entry.userId;
     const blackId = isWhiteA ? b.entry.userId : a.entry.userId;
 
-    const game = await this.gamesService.createGame({ whiteId, blackId, timeControl: tc });
+    const game = await this.gamesService.createGame({
+      whiteId,
+      blackId,
+      timeControl: tc,
+    });
 
     if (this.onMatchFoundCallback) {
       this.onMatchFoundCallback(whiteId, blackId, game.id);
