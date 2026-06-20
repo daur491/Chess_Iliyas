@@ -67,7 +67,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.ensureTimer(data.gameId, game.timeSeconds * 1000);
     }
 
-    const timerState = await this.timerService.getTimerState(data.gameId);
+    const timerState = await this.timerService.getLiveTimerState(data.gameId);
     client.emit('game_state', { game, moves, timerState });
   }
 

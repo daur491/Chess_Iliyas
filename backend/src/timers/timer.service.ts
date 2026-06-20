@@ -63,6 +63,25 @@ export class TimerService implements OnModuleDestroy {
     return JSON.parse(raw) as TimerState;
   }
 
+  // Like getTimerState but with the side-to-move clock adjusted for the time
+  // elapsed since the last move. Use this for snapshots sent to clients (e.g.
+  // on join/refresh) so the value matches the live tick and doesn't flicker.
+  async getLiveTimerState(gameId: string): Promise<TimerState | null> {
+    const state = await this.getTimerState(gameId);
+    if (!state) return null;
+    if (!state.running) return state;
+    const elapsed = Date.now() - state.lastMoveAt;
+    return {
+      ...state,
+      whiteMs: state.currentTurn === 'white'
+        ? Math.max(0, state.whiteMs - elapsed)
+        : state.whiteMs,
+      blackMs: state.currentTurn === 'black'
+        ? Math.max(0, state.blackMs - elapsed)
+        : state.blackMs,
+    };
+  }
+
   // True if this process currently has a live tick interval for the game.
   hasInterval(gameId: string): boolean {
     return this.intervals.has(gameId);
